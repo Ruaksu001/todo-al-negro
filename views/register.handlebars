@@ -1,0 +1,79 @@
+<div id="marco">
+  <h1><span class="cabezatext">Registro</span></h1>
+
+  {{!-- Mensaje de error --}}
+  {{#if error}}
+    <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
+      {{error}}
+    </div>
+  {{/if}}
+
+  <form id="registro" method="post" action="/register">
+    <input
+      type="text"
+      name="nombre"
+      class="inputs"
+      placeholder="Nombre completo"
+      value="{{nombrecompleto}}"
+      required
+    />
+    <input
+      type="email"
+      name="correo"
+      class="inputs"
+      placeholder="Correo electrónico"
+      value="{{correo}}"
+      required
+    />
+    <input
+      type="text"
+      name="usuario"
+      class="inputs"
+      placeholder="Nombre de usuario"
+      value="{{usuario}}"
+      required
+    />
+    <input
+      type="password"
+      name="contraseña"
+      class="inputs"
+      placeholder="Contraseña"
+      required
+    />
+    <input
+      type="password"
+      name="confirmar"
+      class="inputs"
+      placeholder="Confirmar contraseña"
+      required
+    />
+    <input
+      type="text"
+      name="seguridad"
+      class="inputs"
+      placeholder="Ciudad de nacimiento (Pregunta de seguridad)"
+      value="{{seguridad}}"
+      required
+    />
+    <input
+      type="date"
+      name="fecha"
+      class="inputs"
+      value="{{fecha}}"
+      required
+    />
+    <input
+      type="submit"
+      value="Registrarse"
+      class="inputs submit"
+    />
+    <br><br>
+    <span class="legal-text">
+      ¿Ya tienes cuenta? <a href="/login">Pulsa aquí</a>
+    </span>
+    <span class="legal-text">
+      Al continuar aceptas las <a href="/baseslegales">bases legales</a>
+    </span>
+    <a href="/" class="upleft">Volver al inicio</a>
+  </form>
+</div>

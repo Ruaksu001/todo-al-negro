@@ -1,0 +1,37 @@
+<div id="marco">
+  <h1><span class="cabezatext">Ingresar</span></h1>
+
+  {{!-- Mensaje de error --}}
+  {{#if error}}
+    <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
+      {{error}}
+    </div>
+  {{/if}}
+
+  <form id="login" method="post" action="/login">
+    <input
+      type="text"
+      name="email"
+      class="inputs"
+      placeholder="Correo electrónico"
+      value="{{correo}}"
+      required
+    />
+    <input
+      type="password"
+      name="pass"
+      class="inputs"
+      placeholder="Contraseña"
+      required
+    />
+    <input
+      type="submit"
+      value="Entrar"
+      class="inputs submit"
+    />
+    <br><br>
+    <span class="legal-text">¿Primera vez? <a href="/register">Pulsa aquí</a></span>
+    <span class="legal-text">¿Olvidaste tu contraseña? <a href="/forgot">Pulsa aquí</a></span>
+    <a href="/" class="upleft">Volver al inicio</a>
+  </form>
+</div>

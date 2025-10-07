@@ -1,0 +1,52 @@
+<div id="marco">
+  <h1><span class="cabezatext">¡No hay problema!</span></h1>
+  <h6><span class="otrostext">
+    Solo ingresa los datos que aparecen a continuación y sigue las instrucciones del correo que recibirás.
+  </span></h6>
+
+  {{!-- Mensaje de error o éxito --}}
+  {{#if mensaje}}
+    <div style="background-color:#e6ffe6; color:#006400; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
+      {{mensaje}}
+    </div>
+  {{/if}}
+
+  {{#if error}}
+    <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
+      {{error}}
+    </div>
+  {{/if}}
+
+  <form id="forgot" method="post" action="/forgot">
+    <input
+      type="email"
+      name="correo"
+      class="inputs"
+      placeholder="Correo electrónico"
+      value="{{correo}}"
+      required
+    />
+    <input
+      type="text"
+      name="seguridad"
+      class="inputs"
+      placeholder="¿Cuál es tu ciudad de nacimiento?"
+      value="{{seguridad}}"
+      required
+    />
+    <input
+      type="date"
+      name="fecha"
+      class="inputs"
+      value="{{fecha}}"
+      required
+    />
+    <input
+      type="submit"
+      value="Siguiente"
+      class="inputs submit"
+    />
+    <br><br>
+    <a href="/login" class="left">Volver al Registro</a>
+  </form>
+</div>
