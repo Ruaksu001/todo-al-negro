@@ -1,4 +1,10 @@
 <div class="contenedor">
+  {{#if mensaje}}
+    <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold;">
+      {{mensaje}}
+    </div>
+  {{/if}}
+
   <div class="tituloperfil">
     <h1>Perfil de Usuario</h1>
   </div>
@@ -10,7 +16,7 @@
       <h2>{{username}}</h2>
       <p>{{usertag}}</p>
       <p>ID: {{id}}</p>
-      <p>Saldo: <span style="color:green">{{saldo}}</span></p>
+      <p>Saldo: <span style="color:green">{{saldo}} Fichas</span></p>
     </div>
   </div>
 
@@ -30,5 +36,15 @@
 
   <hr>
   <a href="/lobby" class="botonrule">Ir a la ruleta</a>
+
+  <section class="danger-zone">
+    <h2>Zona de Peligro</h2>
+    <p>Una vez que eliminas tu cuenta, no hay vuelta atrás. Por favor, ten la certeza de que esto es lo que quieres hacer.</p>
+    <form action="/perfil/eliminar" method="post" onsubmit="return confirm('¿Estás totalmente seguro de que quieres eliminar tu cuenta? Esta acción es permanente y no se puede deshacer.');">
+      <button type="submit" class="btn-eliminar">
+        Eliminar mi cuenta permanentemente
+      </button>
+    </form>
+  </section>
 </div>
 <hr>

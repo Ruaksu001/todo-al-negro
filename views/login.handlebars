@@ -1,7 +1,12 @@
 <div id="marco">
   <h1><span class="cabezatext">Ingresar</span></h1>
 
-  {{!-- Mensaje de error --}}
+  {{#if mensaje}}
+    <div style="background-color: #2980b9; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+      {{mensaje}}
+    </div>
+  {{/if}}
+
   {{#if error}}
     <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
       {{error}}

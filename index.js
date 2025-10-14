@@ -1,214 +1,195 @@
 // ===============================
-// Servidor Express con Handlebars
+// Servidor Express con Handlebars + Cookies + MongoDB
 // ===============================
 
 const express = require('express');
 const { engine } = require('express-handlebars');
 const bodyParser = require('body-parser');
 const path = require('path');
+const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
 
 const app = express();
 const port = 80;
 
+// ===============================
 // Configuración de Handlebars
+// ===============================
 app.engine('handlebars', engine({ defaultLayout: 'main' }));
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
+// ===============================
 // Middlewares
+// ===============================
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// "Base de datos" temporal (solo memoria)
-const usuarios = [];
+app.use(cookieParser());
 
 // ===============================
-//          RUTAS DE VISTAS
+// Modelo de Usuario (Schema) de Mongoose
+// ===============================
+const UsuarioSchema = new mongoose.Schema({
+  nombre: String,
+  usuario: { type: String, unique: true },
+  correo: { type: String, unique: true },
+  contraseña: String,
+  seguridad: String,
+  fecha: String,
+  saldo: { type: Number, default: 10000 }
+});
+
+const Usuario = mongoose.model('Usuario', UsuarioSchema);
+
+
+// ===============================
+//         RUTAS DE VISTAS
 // ===============================
 
-// Home
 app.get('/', (req, res) => res.render('home', { title: 'Inicio' }));
-
-// -------- Registro --------
 app.get('/register', (req, res) => res.render('register', { title: 'Registro' }));
 
-app.post('/register', (req, res) => {
-  const nombrecompleto =
-    (req.body.nombrecompleto || req.body.nombre || req.body.fullname || '').trim();
-  const usuario =
-    (req.body.usuario || req.body.username || '').trim();
-  const correo =
-    (req.body.correo || req.body.email || '').trim();
-  const contrasenia =
-    (req.body.contraseña || req.body.contrasena || req.body.password || req.body.pass || '').trim();
-  const confirmar =
-    (req.body.confirmar || req.body.passwordConfirm || req.body.confirm || req.body.confirmar_contrasena || '').trim();
-  const seguridad =
-    (req.body.seguridad || '').trim();
-  const fecha =
-    (req.body.fecha || '').trim();
-
-  // Validar campos vacíos
-  if (!nombrecompleto || !usuario || !correo || !contrasenia || !confirmar || !seguridad || !fecha) {
-    return res.render('register', {
-      title: 'Registro',
-      error: 'Faltan campos por completar.',
-      nombrecompleto,
-      usuario,
-      correo,
-      seguridad,
-      fecha
-    });
+app.post('/register', async (req, res) => {
+  const { nombre, usuario, correo, contraseña, confirmar, seguridad, fecha } = req.body;
+  
+  if (!nombre || !usuario || !correo || !contraseña || !confirmar || !seguridad || !fecha) {
+    return res.render('register', { error: 'Faltan campos por completar.', ...req.body });
+  }
+  if (contraseña !== confirmar) {
+    return res.render('register', { error: 'Las contraseñas no coinciden.', ...req.body });
   }
 
-  // Validar contraseñas
-  if (contrasenia !== confirmar) {
-    return res.render('register', {
-      title: 'Registro',
-      error: 'Las contraseñas no coinciden.',
-      nombrecompleto,
-      usuario,
-      correo,
-      seguridad,
-      fecha
-    });
+  try {
+    const correoExistente = await Usuario.findOne({ correo: correo });
+    if (correoExistente) return res.render('register', { error: 'Ya existe una cuenta registrada con este correo.', ...req.body });
+    const usuarioExistente = await Usuario.findOne({ usuario: usuario });
+    if (usuarioExistente) return res.render('register', { error: '👤 El nombre de usuario ya está en uso.', ...req.body });
+
+    const nuevoUsuario = new Usuario({ nombre, usuario, correo, contraseña, seguridad, fecha });
+    await nuevoUsuario.save();
+    console.log('Usuario registrado en MongoDB:', usuario);
+
+    const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
+    res.cookie('usuario', nuevoUsuario.usuario, opciones);
+    res.cookie('nombre', nuevoUsuario.nombre, opciones);
+    res.cookie('saldo', nuevoUsuario.saldo, opciones);
+
+    return res.redirect('/perfil?status=registrado');
+
+  } catch (err) {
+    console.error("Error al registrar:", err);
+    return res.render('register', { error: 'Ocurrió un error en el servidor.', ...req.body });
   }
-
-  // Verificar duplicados
-  const correoExistente = usuarios.find(u => u.correo === correo);
-  const usuarioExistente = usuarios.find(u => u.usuario === usuario);
-
-  if (correoExistente) {
-    return res.render('register', {
-      title: 'Registro',
-      error: 'Ya existe una cuenta registrada con este correo electrónico.',
-      nombrecompleto,
-      usuario,
-      correo,
-      seguridad,
-      fecha
-    });
-  }
-
-  if (usuarioExistente) {
-    return res.render('register', {
-      title: 'Registro',
-      error: '👤 El nombre de usuario ya está en uso.',
-      nombrecompleto,
-      usuario,
-      correo,
-      seguridad,
-      fecha
-    });
-  }
-
-  // Guardar usuario nuevo
-  usuarios.push({ nombrecompleto, usuario, correo, contrasenia, seguridad, fecha });
-  console.log('Usuario registrado:', nombrecompleto, `(${usuario})`);
-
-  // Redirigir al Home
-  return res.redirect('/');
 });
 
-// -------- Login --------
-app.get('/login', (req, res) => res.render('login', { title: 'Iniciar sesión' }));
 
-app.post('/login', (req, res) => {
-  const correo = (req.body.email || req.body.correo || '').trim();
-  const pass = (req.body.pass || req.body.password || req.body.contraseña || req.body.contrasena || '').trim();
+app.get('/login', (req, res) => {
+  let mensaje = null;
+  if (req.query.status === 'logout') mensaje = 'Has cerrado sesión exitosamente.';
+  res.render('login', { title: 'Iniciar sesión', mensaje });
+});
 
-  const usuario = usuarios.find(u => u.correo === correo && u.contrasenia === pass);
+app.post('/login', async (req, res) => {
+  const correo = (req.body.email || '').trim();
+  const pass = (req.body.pass || '').trim();
+  try {
+    const usuarioEncontrado = await Usuario.findOne({ correo: correo });
+    if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
+    if (usuarioEncontrado.contraseña !== pass) return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
 
-  if (!usuario) {
-    return res.render('login', {
-      title: 'Iniciar sesión',
-      error: 'Correo o contraseña incorrectos.',
-      correo
-    });
+    console.log('Inicio de sesión exitoso:', usuarioEncontrado.usuario);
+    const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
+    res.cookie('usuario', usuarioEncontrado.usuario, opciones);
+    res.cookie('nombre', usuarioEncontrado.nombre, opciones);
+    res.cookie('saldo', usuarioEncontrado.saldo, opciones);
+
+    return res.redirect('/perfil');
+  } catch (err) {
+    console.error("Error en el login:", err);
+    return res.render('login', { title: 'Iniciar sesión', error: 'Ocurrió un error en el servidor.', correo });
   }
-
-  console.log('Inicio de sesión:', usuario.usuario);
-  // Al loguear, mandamos los datos al perfil por querystring
-  return res.redirect(`/perfil?name=${encodeURIComponent(usuario.nombrecompleto)}&user=${encodeURIComponent(usuario.usuario)}`);
 });
 
-// -------- Recuperar contraseña --------
-app.get('/forgot', (req, res) => {
-  res.render('forgot', { title: 'Recuperar contraseña' });
+
+app.get('/logout', (req, res) => {
+  res.clearCookie('usuario');
+  res.clearCookie('nombre');
+  res.clearCookie('saldo');
+  res.redirect('/login?status=logout');
 });
 
-app.post('/forgot', (req, res) => {
-  const correo = (req.body.correo || '').trim();
-  const seguridad = (req.body.seguridad || '').trim();
-  const fecha = (req.body.fecha || '').trim();
 
-  // Buscar usuario por correo
-  const usuario = usuarios.find(u => u.correo === correo);
-
-  if (!usuario) {
-    return res.render('forgot', {
-      title: 'Recuperar contraseña',
-      error: 'No existe ninguna cuenta registrada con este correo electrónico.',
-      correo,
-      seguridad,
-      fecha
-    });
-  }
-
-  // Verificar los otros datos
-  if (usuario.seguridad !== seguridad || usuario.fecha !== fecha) {
-    return res.render('forgot', {
-      title: 'Recuperar contraseña',
-      error: 'Los datos ingresados no coinciden con nuestra base de datos.',
-      correo,
-      seguridad,
-      fecha
-    });
-  }
-
-  // Si todo está correcto
-  console.log(`Se envió un correo de recuperación a: ${correo}`);
-  return res.render('forgot', {
-    title: 'Recuperar contraseña',
-    mensaje: 'Se ha enviado un correo con instrucciones para restablecer tu contraseña.',
-  });
-});
-
-// -------- Lobby --------
-app.get('/lobby', (req, res) => {
-  const username = req.query.name || null;
-  res.render('lobby', { title: 'Lobby', username });
-});
-
-// -------- Perfil --------
 app.get('/perfil', (req, res) => {
-  const username = (req.query.name || 'Usuario').trim();
-  const usertag = (req.query.user || 'usuario').trim();
+  if (!req.cookies.usuario) return res.redirect('/login');
+  
+  let mensaje = null;
+  if (req.query.status === 'registrado') mensaje = '¡Te has registrado y tu sesión se ha iniciado exitosamente!';
+  
+  const username = req.cookies.nombre || 'Usuario';
+  const usertag = req.cookies.usuario || 'usuario';
+  const saldo = req.cookies.saldo || 0;
 
-  // Generar ID único basado en el nombre de usuario
   let hash = 0;
-  for (let i = 0; i < usertag.length; i++) {
-    hash = (hash * 31 + usertag.charCodeAt(i)) % 1000000;
-  }
+  for (let i = 0; i < usertag.length; i++) hash = (hash * 31 + usertag.charCodeAt(i)) % 1000000;
   const id = String(hash).padStart(6, '0');
-
-  res.render('perfil', {
-    title: 'Perfil',
-    username,
-    usertag: `@${usertag}`,
-    id,
-    saldo: '45.000$',
-  });
+  
+  res.render('perfil', { title: 'Perfil', username, usertag: `@${usertag}`, id, saldo: Number(saldo).toLocaleString('es-CL'), mensaje });
 });
 
-// -------- Otras vistas --------
+app.get('/lobby', (req, res) => {
+    if (!req.cookies.usuario) return res.redirect('/login');
+    const saldo = req.cookies.saldo || 0;
+    res.render('lobby', { title: 'Lobby', saldo: Number(saldo).toLocaleString('es-CL') });
+});
+
 app.get('/transacciones', (req, res) => res.render('transacciones', { title: 'Transacciones' }));
 app.get('/about', (req, res) => res.render('about', { title: 'Acerca de' }));
 app.get('/baseslegales', (req, res) => res.render('baseslegales', { title: 'Bases legales' }));
+app.get('/forgot', (req, res) => res.render('forgot', { title: 'Recuperar contraseña' }));
+
+app.post('/perfil/eliminar', async (req, res) => {
+  try {
+    const usuarioAEliminar = req.cookies.usuario;
+    if (!usuarioAEliminar) { return res.redirect('/login'); }
+    await Usuario.deleteOne({ usuario: usuarioAEliminar });
+    console.log(`✅ Usuario eliminado: ${usuarioAEliminar}`);
+    res.clearCookie('usuario');
+    res.clearCookie('nombre');
+    res.clearCookie('saldo');
+    return res.redirect('/');
+  } catch (err) {
+    console.error("❌ Error al eliminar el usuario:", err);
+    return res.redirect('/perfil');
+  }
+});
+
+app.post('/actualizar-saldo', async (req, res) => {
+    if (!req.cookies.usuario) {
+        return res.status(401).json({ success: false, message: 'Usuario no autenticado.' });
+    }
+
+    try {
+        const usuario = req.cookies.usuario;
+        const nuevoSaldo = req.body.saldo;
+
+        await Usuario.updateOne({ usuario: usuario }, { $set: { saldo: nuevoSaldo } });
+
+        res.cookie('saldo', nuevoSaldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+        console.log(`Saldo actualizado para ${usuario}: ${nuevoSaldo}`);
+        res.json({ success: true, message: 'Saldo actualizado correctamente.' });
+    } catch (err) {
+        console.error("Error al actualizar saldo:", err);
+        res.status(500).json({ success: false, message: 'Error en el servidor.' });
+    }
+});
+
 
 // ===============================
-// Servidor en ejecución
+// Iniciar Servidor y Conexión a MongoDB
 // ===============================
-app.listen(port, () => {
-  console.log(`✅ Servidor corriendo en http://localhost:${port}`);
-});
+app.listen(port, () => console.log(`✅ Servidor corriendo en http://localhost:${port}`));
+mongoose.connect('mongodb+srv://admin:admin123@miapp.qnclhil.mongodb.net/?retryWrites=true&w=majority&appName=miapp', {})
+.then(() => console.log('✅ Conexión exitosa a MongoDB Atlas'))
+.catch(err => console.error('❌ Error conectando a MongoDB', err));
