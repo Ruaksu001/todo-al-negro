@@ -1,5 +1,5 @@
 // ===============================
-// Servidor Express con Handlebars + Cookies + MongoDB
+// Servidor Express con Handlebars + Socket.IO
 // ===============================
 
 const express = require('express');
@@ -8,8 +8,13 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
+const http = require('http');
+const { Server } = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
 const port = 80;
 
 // ===============================
@@ -20,12 +25,22 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
-app.engine('handlebars', engine({ defaultLayout: 'main' }));
+app.engine('handlebars', engine({ 
+    defaultLayout: 'main',
+    helpers: {
+        // Helper para crear secciones de scripts en las vistas
+        section: function(name, options) {
+            if (!this._sections) this._sections = {};
+            this._sections[name] = options.fn(this);
+            return null;
+        }
+    }
+}));
 app.set('view engine', 'handlebars');
 app.set('views', path.join(__dirname, 'views'));
 
 // ===============================
-// Modelo de Usuario (Schema) de Mongoose
+// Modelos de Mongoose
 // ===============================
 const UsuarioSchema = new mongoose.Schema({
   nombre: String,
@@ -34,16 +49,20 @@ const UsuarioSchema = new mongoose.Schema({
   contraseña: String,
   seguridad: String,
   fecha: String,
-  saldo: { type: Number, default: 10000 },
+  saldo: { type: Number, default: 10000 }
+});
+const Usuario = mongoose.model('Usuario', UsuarioSchema);
+
+const GameStateSchema = new mongoose.Schema({
+  _id: { type: String, default: 'main_game_state' },
   historialGanadores: { type: Array, default: [] },
   historialApuestas: { type: Array, default: [] }
 });
-
-const Usuario = mongoose.model('Usuario', UsuarioSchema);
+const GameState = mongoose.model('GameState', GameStateSchema);
 
 
 // ===============================
-//         RUTAS DE VISTAS Y AUTENTICACIÓN
+//         RUTAS
 // ===============================
 
 app.get('/', (req, res) => res.render('home', { title: 'Inicio' }));
@@ -111,11 +130,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/login?status=logout');
 });
 
-
-// ===============================
-//         RUTAS DE LA APLICACIÓN
-// ===============================
-
 app.get('/perfil', (req, res) => {
   if (!req.cookies.usuario) return res.redirect('/login');
   
@@ -145,14 +159,20 @@ app.get('/perfil', (req, res) => {
 app.get('/lobby', async (req, res) => {
     if (!req.cookies.usuario) return res.redirect('/login');
     try {
-        const usuarioData = await Usuario.findOne({ usuario: req.cookies.usuario });
+        const [usuarioData, gameState] = await Promise.all([
+            Usuario.findOne({ usuario: req.cookies.usuario }).lean(),
+            GameState.findById('main_game_state').lean()
+        ]);
+
         if (!usuarioData) return res.redirect('/login');
+
+        const currentGameState = gameState || { historialGanadores: [], historialApuestas: [] };
 
         res.render('lobby', {
             title: 'Lobby',
             saldo: Number(usuarioData.saldo).toLocaleString('es-CL'),
-            historialGanadores: JSON.stringify(usuarioData.historialGanadores),
-            historialApuestas: JSON.stringify(usuarioData.historialApuestas),
+            historialGanadores: JSON.stringify(currentGameState.historialGanadores),
+            historialApuestas: JSON.stringify(currentGameState.historialApuestas),
             usertag: usuarioData.usuario
         });
     } catch (error) {
@@ -179,25 +199,6 @@ app.post('/perfil/eliminar', async (req, res) => {
   }
 });
 
-app.post('/actualizar-juego', async (req, res) => {
-    if (!req.cookies.usuario) {
-        return res.status(401).json({ success: false, message: 'Usuario no autenticado.' });
-    }
-    try {
-        const { saldo, historialGanadores, historialApuestas } = req.body;
-        
-        await Usuario.updateOne(
-            { usuario: req.cookies.usuario }, 
-            { $set: { saldo, historialGanadores, historialApuestas } }
-        );
-        res.cookie('saldo', saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
-        res.json({ success: true });
-    } catch (err) {
-        console.error("Error al actualizar datos de juego:", err);
-        res.status(500).json({ success: false, message: 'Error en el servidor.' });
-    }
-});
-
 // Rutas estáticas
 app.get('/transacciones', (req, res) => res.render('transacciones', { title: 'Transacciones' }));
 app.get('/about', (req, res) => res.render('about', { title: 'Acerca de' }));
@@ -205,9 +206,44 @@ app.get('/baseslegales', (req, res) => res.render('baseslegales', { title: 'Base
 app.get('/forgot', (req, res) => res.render('forgot', { title: 'Recuperar contraseña' }));
 
 // ===============================
+//         LÓGICA DE SOCKET.IO
+// ===============================
+io.on('connection', (socket) => {
+  console.log('✅ Un usuario se ha conectado al lobby');
+
+  socket.on('nueva-jugada', async (data) => {
+    try {
+      await Usuario.updateOne({ usuario: data.usertag }, { $set: { saldo: data.saldo } });
+      
+      const updatedGameState = await GameState.findByIdAndUpdate(
+        'main_game_state',
+        { $set: { 
+            historialGanadores: data.historialGanadores,
+            historialApuestas: data.historialApuestas
+          }},
+        { new: true, upsert: true, lean: true }
+      );
+      
+      io.emit('actualizar-historial', {
+        historialGanadores: updatedGameState.historialGanadores,
+        historialApuestas: updatedGameState.historialApuestas
+      });
+
+    } catch (error) {
+      console.error('Error al procesar la jugada:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('❌ Un usuario se ha desconectado');
+  });
+});
+
+
+// ===============================
 // Iniciar Servidor y Conexión a MongoDB
 // ===============================
-app.listen(port, () => console.log(`✅ Servidor corriendo en http://localhost:${port}`));
+server.listen(port, () => console.log(`✅ Servidor corriendo en http://localhost:${port}`));
 mongoose.connect('mongodb+srv://admin:admin123@miapp.qnclhil.mongodb.net/?retryWrites=true&w=majority&appName=miapp', {})
 .then(() => console.log('✅ Conexión exitosa a MongoDB Atlas'))
 .catch(err => console.error('❌ Error conectando a MongoDB', err));

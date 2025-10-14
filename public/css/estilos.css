@@ -528,3 +528,26 @@ body.pagina-larga {
   }
 
 }
+/* ================================== */
+/* ====== ESTILOS PERFIL (CONTENEDOR) ====== */
+/* ================================== */
+
+.contenedor {
+  width: 90%; /* Ocupará el 90% del ancho disponible */
+  max-width: 800px; /* Pero nunca será más ancho que 800px */
+  margin: 60px auto; /* Se centrará horizontalmente y tendrá margen vertical */
+  background-color: #1A2C38; /* Mismo color de fondo que las otras tarjetas */
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+/* Ajuste específico para el perfil en móviles */
+@media screen and (max-width: 768px) {
+  .contenedor {
+    width: 95%; /* En móvil ocupa casi todo el ancho */
+    padding: 20px;
+    margin-top: 80px; /* Más margen superior para que no choque con los botones de la esquina */
+    margin-bottom: 20px;
+  }
+}

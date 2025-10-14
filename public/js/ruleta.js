@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Conectar con el servidor de Socket.IO
+    const socket = io();
+
     // Elementos del DOM
     const ruletaGiratoria = document.getElementById('ruleta-giratoria');
     const numerosApostables = document.querySelectorAll('.numero-apuesta');
@@ -78,23 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function guardarDatosDeJuego() {
-        try {
-            await fetch('/actualizar-juego', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    saldo: saldo,
-                    historialGanadores: historialGanadores,
-                    historialApuestas: historialApuestas
-                })
-            });
-            console.log("Datos del juego guardados en el servidor.");
-        } catch (error) {
-            console.error('Error de conexión al guardar los datos del juego:', error);
-        }
-    }
-    
     function actualizarSaldoEnPantalla() {
         saldoDisplay.textContent = `${saldo.toLocaleString('es-CL')} fichas`;
     }
@@ -187,9 +173,12 @@ document.addEventListener('DOMContentLoaded', () => {
             historialApuestas.unshift(apuestaInfo);
             if (historialApuestas.length > 5) historialApuestas.pop();
             
-            guardarDatosDeJuego();
-            renderizarGanadores();
-            renderizarApuestas();
+            socket.emit('nueva-jugada', {
+                saldo: saldo,
+                usertag: usertag,
+                historialGanadores: historialGanadores,
+                historialApuestas: historialApuestas
+            });
             
             if (resultadoApuesta === 'Ganada') {
                 mensajeDisplay.textContent = `¡Salió el ${numeroGanador.num}! Ganaste ${(ganancia - apuestaActual.monto).toLocaleString('es-CL')} fichas.`;
@@ -206,6 +195,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 6500);
     });
 
+    socket.on('actualizar-historial', (data) => {
+        console.log("Recibido historial actualizado del servidor.");
+        historialGanadores = data.historialGanadores;
+        historialApuestas = data.historialApuestas;
+        
+        renderizarGanadores();
+        renderizarApuestas();
+    });
+
+    // Iniciar
     dibujarRuleta();
     actualizarSaldoEnPantalla();
     renderizarGanadores();
