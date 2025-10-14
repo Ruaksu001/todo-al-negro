@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const http = require('http');
 const { Server } = require("socket.io");
+const bcrypt = require('bcrypt');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +29,6 @@ app.use(cookieParser());
 app.engine('handlebars', engine({ 
     defaultLayout: 'main',
     helpers: {
-        // Helper para crear secciones de scripts en las vistas
         section: function(name, options) {
             if (!this._sections) this._sections = {};
             this._sections[name] = options.fn(this);
@@ -49,7 +49,9 @@ const UsuarioSchema = new mongoose.Schema({
   contraseña: String,
   seguridad: String,
   fecha: String,
-  saldo: { type: Number, default: 10000 }
+  saldo: { type: Number, default: 10000 },
+  historialGanadores: { type: Array, default: [] },
+  historialApuestas: { type: Array, default: [] }
 });
 const Usuario = mongoose.model('Usuario', UsuarioSchema);
 
@@ -80,9 +82,20 @@ app.post('/register', async (req, res) => {
     const usuarioExistente = await Usuario.findOne({ usuario: usuario });
     if (usuarioExistente) return res.render('register', { error: '👤 El nombre de usuario ya está en uso.', ...req.body });
 
-    const nuevoUsuario = new Usuario({ nombre, usuario, correo, contraseña, seguridad, fecha });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(contraseña, salt);
+
+    const nuevoUsuario = new Usuario({ 
+        nombre, 
+        usuario, 
+        correo, 
+        contraseña: hashedPassword,
+        seguridad, 
+        fecha 
+    });
+    
     await nuevoUsuario.save();
-    console.log('Usuario registrado en MongoDB:', usuario);
+    console.log('Usuario registrado en MongoDB con contraseña encriptada:', usuario);
 
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', nuevoUsuario.usuario, opciones);
@@ -102,14 +115,25 @@ app.get('/login', (req, res) => {
   res.render('login', { title: 'Iniciar sesión', mensaje });
 });
 
+// 🔹 RUTA DE LOGIN CORREGIDA
 app.post('/login', async (req, res) => {
   const correo = (req.body.email || '').trim();
   const pass = (req.body.pass || '').trim();
   try {
+    // 1. Buscamos al usuario solo por su correo
     const usuarioEncontrado = await Usuario.findOne({ correo: correo });
-    if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
-    if (usuarioEncontrado.contraseña !== pass) return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
+    if (!usuarioEncontrado) {
+      return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
+    }
+    
+    // 2. Usamos bcrypt.compare para verificar la contraseña
+    const esCorrecta = await bcrypt.compare(pass, usuarioEncontrado.contraseña);
+    
+    if (!esCorrecta) {
+      return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
+    }
 
+    // 3. Si la contraseña es correcta, iniciamos sesión
     console.log('Inicio de sesión exitoso:', usuarioEncontrado.usuario);
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', usuarioEncontrado.usuario, opciones);
@@ -199,7 +223,6 @@ app.post('/perfil/eliminar', async (req, res) => {
   }
 });
 
-// Rutas estáticas
 app.get('/transacciones', (req, res) => res.render('transacciones', { title: 'Transacciones' }));
 app.get('/about', (req, res) => res.render('about', { title: 'Acerca de' }));
 app.get('/baseslegales', (req, res) => res.render('baseslegales', { title: 'Bases legales' }));
@@ -241,7 +264,7 @@ io.on('connection', (socket) => {
 
 
 // ===============================
-// Iniciar Servidor y Conexión a MongoDB
+// Iniciar Servidor
 // ===============================
 server.listen(port, () => console.log(`✅ Servidor corriendo en http://localhost:${port}`));
 mongoose.connect('mongodb+srv://admin:admin123@miapp.qnclhil.mongodb.net/?retryWrites=true&w=majority&appName=miapp', {})
