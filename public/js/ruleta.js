@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // La comprobación inicial ya no es necesaria
     const socket = io();
 
     // Elementos del DOM
@@ -21,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let historialApuestas = initialData.historialApuestas || [];
     const usertag = initialData.usertag || 'jugador';
     
+    // 🔹 NUEVO: Variable para recordar la última posición de la ruleta
+    let anguloActual = 0;
+
     const numerosRuleta = [ { num: 0, color: 'verde' }, { num: 32, color: 'rojo' }, { num: 15, color: 'negro' }, { num: 19, color: 'rojo' }, { num: 4, color: 'negro' }, { num: 21, color: 'rojo' }, { num: 2, color: 'negro' }, { num: 25, color: 'rojo' }, { num: 17, color: 'negro' }, { num: 34, color: 'rojo' }, { num: 6, color: 'negro' }, { num: 27, color: 'rojo' }, { num: 13, color: 'negro' }, { num: 36, color: 'rojo' }, { num: 11, color: 'negro' }, { num: 30, color: 'rojo' }, { num: 8, color: 'negro' }, { num: 23, color: 'rojo' }, { num: 10, color: 'negro' }, { num: 5, color: 'rojo' }, { num: 24, color: 'negro' }, { num: 16, color: 'rojo' }, { num: 33, color: 'negro' }, { num: 1, color: 'rojo' }, { num: 20, color: 'negro' }, { num: 14, color: 'rojo' }, { num: 31, color: 'negro' }, { num: 9, color: 'rojo' }, { num: 22, color: 'negro' }, { num: 18, color: 'rojo' }, { num: 29, color: 'negro' }, { num: 7, color: 'rojo' }, { num: 28, color: 'negro' }, { num: 12, color: 'rojo' }, { num: 35, color: 'negro' }, { num: 3, color: 'rojo' }, { num: 26, color: 'negro' } ];
 
     function dibujarRuleta() {
@@ -81,6 +83,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    async function guardarDatosDeJuego() {
+        try {
+            await fetch('/actualizar-juego', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    saldo: saldo,
+                    historialGanadores: historialGanadores,
+                    historialApuestas: historialApuestas
+                })
+            });
+            console.log("Datos del juego guardados en el servidor.");
+        } catch (error) {
+            console.error('Error de conexión al guardar los datos del juego:', error);
+        }
+    }
+    
     function actualizarSaldoEnPantalla() {
         saldoDisplay.textContent = `${saldo.toLocaleString('es-CL')} fichas`;
     }
@@ -119,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // 🔹 LÓGICA DE GIRO CORREGIDA
     btnGirar.addEventListener('click', () => {
         const monto = parseInt(inputApuesta.value, 10);
         if (apuestaActual.tipo === null || isNaN(monto) || monto <= 0 || monto > saldo) {
@@ -134,99 +154,110 @@ document.addEventListener('DOMContentLoaded', () => {
         inputApuesta.disabled = true;
         mensajeDisplay.textContent = `¡Apostaste ${apuestaActual.monto.toLocaleString('es-CL')}! Girando...`;
 
+        // 1. Quita la transición y resetea la posición a su equivalente entre 0-360 grados
         ruletaGiratoria.style.transition = 'none';
-        ruletaGiratoria.style.transform = 'rotate(0deg)';
-        ruletaGiratoria.offsetHeight; 
+        ruletaGiratoria.style.transform = `rotate(${anguloActual % 360}deg)`;
 
-        const indiceGanador = Math.floor(Math.random() * numerosRuleta.length);
-        const numeroGanador = numerosRuleta[indiceGanador];
-        const num = numeroGanador.num;
-        const anguloPorDivision = 360 / numerosRuleta.length;
-        const targetAngle = 360 - (indiceGanador * anguloPorDivision) - (anguloPorDivision / 2);
-        const vueltasCompletas = 5;
-        const anguloFinal = (360 * vueltasCompletas) + targetAngle;
-
-        ruletaGiratoria.style.transition = 'transform 6s cubic-bezier(0.1, 0.5, 0.2, 1)';
-        ruletaGiratoria.style.transform = `rotate(${anguloFinal}deg)`;
-
+        // Usamos un pequeño timeout para que el navegador procese el reseteo ANTES de aplicar la nueva animación
         setTimeout(() => {
-            historialGanadores.unshift(numeroGanador);
-            if (historialGanadores.length > 5) historialGanadores.pop();
-
-            let ganancia = 0;
-            let resultadoApuesta = 'Perdida';
-            let tipoDeApuestaTexto = '';
-
-            switch (apuestaActual.tipo) {
-                case 'pleno':
-                    tipoDeApuestaTexto = `Pleno ${apuestaActual.valor}`;
-                    if (num === apuestaActual.valor) ganancia = apuestaActual.monto * 36;
-                    break;
-                case 'color':
-                    tipoDeApuestaTexto = `Color ${apuestaActual.valor}`;
-                    if (num !== 0 && numeroGanador.color === apuestaActual.valor) ganancia = apuestaActual.monto * 2;
-                    break;
-                case 'paridad':
-                    tipoDeApuestaTexto = apuestaActual.valor === 'par' ? 'Par' : 'Impar';
-                    if (num !== 0 && ((num % 2 === 0 && apuestaActual.valor === 'par') || (num % 2 !== 0 && apuestaActual.valor === 'impar'))) {
-                        ganancia = apuestaActual.monto * 2;
-                    }
-                    break;
-                case 'mitad':
-                    tipoDeApuestaTexto = apuestaActual.valor === 'falta' ? '1-18 (Falta)' : '19-36 (Pasa)';
-                    if (num >= 1 && num <= 18 && apuestaActual.valor === 'falta') ganancia = apuestaActual.monto * 2;
-                    if (num >= 19 && num <= 36 && apuestaActual.valor === 'pasa') ganancia = apuestaActual.monto * 2;
-                    break;
-                case 'docena':
-                    tipoDeApuestaTexto = `Docena ${apuestaActual.valor}`;
-                    if (num >= 1 && num <= 12 && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
-                    if (num >= 13 && num <= 24 && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
-                    if (num >= 25 && num <= 36 && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
-                    break;
-                case 'columna':
-                    tipoDeApuestaTexto = `Columna ${apuestaActual.valor}`;
-                    const col1 = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34];
-                    const col2 = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35];
-                    const col3 = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36];
-                    if (col1.includes(num) && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
-                    if (col2.includes(num) && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
-                    if (col3.includes(num) && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
-                    break;
-            }
-
-            if (ganancia > 0) resultadoApuesta = 'Ganada';
-            saldo += ganancia;
-
-            const apuestaInfo = {
-                usuario: usertag,
-                tipo: tipoDeApuestaTexto,
-                monto: apuestaActual.monto,
-                resultado: resultadoApuesta,
-                variacion: ganancia > 0 ? (ganancia - apuestaActual.monto) : -apuestaActual.monto
-            };
-            historialApuestas.unshift(apuestaInfo);
-            if (historialApuestas.length > 5) historialApuestas.pop();
+            const indiceGanador = Math.floor(Math.random() * numerosRuleta.length);
+            const numeroGanador = numerosRuleta[indiceGanador];
+            const num = numeroGanador.num;
+            const anguloPorDivision = 360 / numerosRuleta.length;
+            const targetAngle = 360 - (indiceGanador * anguloPorDivision) - (anguloPorDivision / 2);
+            const vueltasCompletas = 5;
             
-            socket.emit('nueva-jugada', {
-                saldo: saldo,
-                usertag: usertag,
-                historialGanadores: historialGanadores,
-                historialApuestas: historialApuestas
-            });
-            
-            if (resultadoApuesta === 'Ganada') {
-                mensajeDisplay.textContent = `¡Salió el ${numeroGanador.num}! Ganaste ${(ganancia - apuestaActual.monto).toLocaleString('es-CL')} fichas.`;
-            } else {
-                mensajeDisplay.textContent = `Salió el ${numeroGanador.num}. Mejor suerte la próxima vez.`;
-            }
+            // 2. Calcula el nuevo ángulo final, añadiendo las vueltas al ángulo actual
+            const anguloFinal = anguloActual + (360 * vueltasCompletas) + targetAngle - (anguloActual % 360);
 
-            actualizarSaldoEnPantalla();
-            btnGirar.disabled = false;
-            inputApuesta.disabled = false;
-            inputApuesta.value = '';
-            quitarSeleccion();
-            apuestaActual = { tipo: null, valor: null, monto: 0 };
-        }, 6500);
+            // 3. Aplica la nueva transición y el giro
+            ruletaGiratoria.style.transition = 'transform 6s cubic-bezier(0.1, 0.5, 0.2, 1)';
+            ruletaGiratoria.style.transform = `rotate(${anguloFinal}deg)`;
+            
+            // 4. Guarda el nuevo ángulo final para el próximo giro
+            anguloActual = anguloFinal;
+
+            // 5. Procesa el resultado al final de la animación
+            setTimeout(() => {
+                historialGanadores.unshift(numeroGanador);
+                if (historialGanadores.length > 5) historialGanadores.pop();
+
+                let ganancia = 0;
+                let resultadoApuesta = 'Perdida';
+                let tipoDeApuestaTexto = '';
+
+                // ... (la lógica switch para calcular la ganancia se mantiene igual)
+                switch (apuestaActual.tipo) {
+                    case 'pleno':
+                        tipoDeApuestaTexto = `Pleno ${apuestaActual.valor}`;
+                        if (num === apuestaActual.valor) ganancia = apuestaActual.monto * 36;
+                        break;
+                    case 'color':
+                        tipoDeApuestaTexto = `Color ${apuestaActual.valor}`;
+                        if (num !== 0 && numeroGanador.color === apuestaActual.valor) ganancia = apuestaActual.monto * 2;
+                        break;
+                    case 'paridad':
+                        tipoDeApuestaTexto = apuestaActual.valor === 'par' ? 'Par' : 'Impar';
+                        if (num !== 0 && ((num % 2 === 0 && apuestaActual.valor === 'par') || (num % 2 !== 0 && apuestaActual.valor === 'impar'))) {
+                            ganancia = apuestaActual.monto * 2;
+                        }
+                        break;
+                    case 'mitad':
+                        tipoDeApuestaTexto = apuestaActual.valor === 'falta' ? '1-18 (Falta)' : '19-36 (Pasa)';
+                        if (num >= 1 && num <= 18 && apuestaActual.valor === 'falta') ganancia = apuestaActual.monto * 2;
+                        if (num >= 19 && num <= 36 && apuestaActual.valor === 'pasa') ganancia = apuestaActual.monto * 2;
+                        break;
+                    case 'docena':
+                        tipoDeApuestaTexto = `Docena ${apuestaActual.valor}`;
+                        if (num >= 1 && num <= 12 && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
+                        if (num >= 13 && num <= 24 && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
+                        if (num >= 25 && num <= 36 && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
+                        break;
+                    case 'columna':
+                        tipoDeApuestaTexto = `Columna ${apuestaActual.valor}`;
+                        const col1 = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34];
+                        const col2 = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35];
+                        const col3 = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36];
+                        if (col1.includes(num) && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
+                        if (col2.includes(num) && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
+                        if (col3.includes(num) && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
+                        break;
+                }
+
+                if (ganancia > 0) resultadoApuesta = 'Ganada';
+                saldo += ganancia;
+
+                const apuestaInfo = {
+                    usuario: usertag,
+                    tipo: tipoDeApuestaTexto,
+                    monto: apuestaActual.monto,
+                    resultado: resultadoApuesta,
+                    variacion: ganancia > 0 ? (ganancia - apuestaActual.monto) : -apuestaActual.monto
+                };
+                historialApuestas.unshift(apuestaInfo);
+                if (historialApuestas.length > 5) historialApuestas.pop();
+                
+                socket.emit('nueva-jugada', {
+                    saldo: saldo,
+                    usertag: usertag,
+                    historialGanadores: historialGanadores,
+                    historialApuestas: historialApuestas
+                });
+                
+                if (resultadoApuesta === 'Ganada') {
+                    mensajeDisplay.textContent = `¡Salió el ${numeroGanador.num}! Ganaste ${(ganancia - apuestaActual.monto).toLocaleString('es-CL')} fichas.`;
+                } else {
+                    mensajeDisplay.textContent = `Salió el ${numeroGanador.num}. Mejor suerte la próxima vez.`;
+                }
+
+                actualizarSaldoEnPantalla();
+                btnGirar.disabled = false;
+                inputApuesta.disabled = false;
+                inputApuesta.value = '';
+                quitarSeleccion();
+                apuestaActual = { tipo: null, valor: null, monto: 0 };
+            }, 6100); // Se ajusta el tiempo para que coincida con la animación
+        }, 20); // Pequeño delay para asegurar el reseteo
     });
 
     socket.on('actualizar-historial', (data) => {
