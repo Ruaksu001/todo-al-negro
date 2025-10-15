@@ -335,6 +335,73 @@ body.pagina-larga {
   display: block;
 }
 
+.contenedor {
+  width: 90%;
+  max-width: 800px;
+  margin: 60px auto;
+  background-color: #1A2C38;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+}
+
+@media screen and (max-width: 768px) {
+  body.pagina-larga {
+    padding-top: 60px;
+  }
+  .upleft {
+    top: 10px;
+    left: 10px;
+    padding: 8px;
+    font-size: 0.9em;
+  }
+  .links {
+    top: 10px;
+    right: 10px;
+  }
+  .links a {
+    padding: 8px 10px;
+    font-size: 0.9em;
+  }
+  .mesa-ruleta {
+    flex-direction: column;
+    gap: 20px;
+  }
+  #mesa-de-apuestas {
+    max-width: 95%;
+    padding: 5px;
+  }
+  #numeros-grid {
+    grid-template-columns: repeat(6, 1fr) 40px; /* Reducido para móviles */
+    gap: 3px;
+  }
+  .numero-apuesta {
+    padding: 10px 0;
+    font-size: 0.9em;
+  }
+  .apuesta-externa {
+    padding: 15px 0;
+    font-size: 0.8em;
+  }
+  table {
+    font-size: 0.8em;
+  }
+  th, td {
+    padding: 8px 4px;
+  }
+  .logo {
+    width: 120px;
+    top: 10px;
+    left: 10px;
+  }
+  .contenedor {
+    width: 95%;
+    padding: 20px;
+    margin-top: 80px;
+    margin-bottom: 20px;
+  }
+}
+
 .pagina-lobby h1 { text-align: center; margin-bottom: 20px; }
 .mesa-ruleta { display: flex; align-items: center; justify-content: center; gap: 40px; margin-bottom: 30px; flex-wrap: wrap; }
 
@@ -381,7 +448,7 @@ body.pagina-larga {
 #btn-girar:hover:not(:disabled) { background-color: #2ecc71 !important; }
 
 #mesa-de-apuestas {
-    max-width: 800px;
+    max-width: 900px;
     margin: 20px auto;
     background-color: #0c1a25;
     padding: 10px;
@@ -390,7 +457,7 @@ body.pagina-larga {
 
 #numeros-grid {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
+    grid-template-columns: repeat(12, 1fr) 60px;
     gap: 5px;
 }
 
@@ -408,23 +475,37 @@ body.pagina-larga {
 .numero-apuesta.rojo { background-color: #c0392b; }
 .numero-apuesta.negro { background-color: #2c3e50; }
 .numero-apuesta.verde { background-color: #27ae60; margin-bottom: 5px; }
-.numero-apuesta.seleccionado { box-shadow: 0 0 15px #00AEEF; border: 2px solid #00AEEF; }
 
-#apuestas-externas {
+.apuesta-columna {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0c1a25;
+    border: 2px solid #27ae60;
+}
+
+#apuestas-docenas {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+  margin-top: 5px;
+}
+
+#apuestas-simples {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 5px;
   margin-top: 5px;
 }
 
 .apuesta-externa {
-  padding: 20px 0;
+  padding: 15px 0;
   text-align: center;
   color: white;
   font-weight: bold;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 1.2em;
+  font-size: 1.1em;
   border: 2px solid transparent;
   transition: transform 0.2s, border-color 0.2s;
 }
@@ -433,16 +514,25 @@ body.pagina-larga {
   transform: scale(1.05);
 }
 
+.apuesta-externa.apuesta-docena,
+.apuesta-externa.apuesta-simple {
+    background-color: #27ae60;
+}
+
 .apuesta-externa.apuesta-rojo {
   background-color: #c0392b;
+  min-height: 20px;
 }
 
 .apuesta-externa.apuesta-negro {
   background-color: #2c3e50;
+  min-height: 20px;
 }
 
-.apuesta-externa.seleccionado {
-  border-color: #00AEEF;
+.apuesta-externa.seleccionado,
+.numero-apuesta.seleccionado {
+  border: 3px solid #f1c40f !important;
+  box-shadow: 0 0 10px #f1c40f;
 }
 
 .ganancia {
@@ -453,101 +543,4 @@ body.pagina-larga {
 .perdida {
   color: #e74c3c;
   font-weight: bold;
-}
-
-/* ================================== */
-/* ====== ESTILOS PARA MÓVILES ====== */
-/* ================================== */
-
-@media screen and (max-width: 768px) {
-
-  /* Ajuste general para páginas largas en móvil */
-  body.pagina-larga {
-    padding-top: 60px; /* Añade espacio para el botón 'Volver' */
-  }
-
-  /* El botón 'Volver' se ajusta para no estorbar */
-  .upleft {
-    top: 10px;
-    left: 10px;
-    padding: 8px;
-    font-size: 0.9em;
-  }
-  
-  /* Los enlaces de la esquina superior derecha se mueven */
-  .links {
-    top: 10px;
-    right: 10px;
-  }
-  .links a {
-    padding: 8px 10px;
-    font-size: 0.9em;
-  }
-
-  /* --- AJUSTES DEL LOBBY --- */
-
-  /* La ruleta y los controles se ponen uno debajo del otro */
-  .mesa-ruleta {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  /* La mesa de apuestas se hace más pequeña */
-  #mesa-de-apuestas {
-    max-width: 95%;
-    padding: 5px;
-  }
-
-  /* Los números de la mesa se hacen más pequeños */
-  #numeros-grid {
-    grid-template-columns: repeat(6, 1fr); /* 6 columnas en vez de 12 */
-    gap: 3px;
-  }
-  .numero-apuesta {
-    padding: 10px 0;
-    font-size: 0.9em;
-  }
-
-  /* Los botones de Rojo/Negro se ajustan */
-  .apuesta-externa {
-    padding: 15px 0;
-    font-size: 1em;
-  }
-
-  /* Las tablas de historial se ajustan para que quepan */
-  table {
-    font-size: 0.8em;
-  }
-  th, td {
-    padding: 8px 4px;
-  }
-  .logo {
-    width: 120px; /* La achicamos de 280px a 120px */
-    top: 10px;
-    left: 10px;
-  }
-
-}
-/* ================================== */
-/* ====== ESTILOS PERFIL (CONTENEDOR) ====== */
-/* ================================== */
-
-.contenedor {
-  width: 90%; /* Ocupará el 90% del ancho disponible */
-  max-width: 800px; /* Pero nunca será más ancho que 800px */
-  margin: 60px auto; /* Se centrará horizontalmente y tendrá margen vertical */
-  background-color: #1A2C38; /* Mismo color de fondo que las otras tarjetas */
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
-}
-
-/* Ajuste específico para el perfil en móviles */
-@media screen and (max-width: 768px) {
-  .contenedor {
-    width: 95%; /* En móvil ocupa casi todo el ancho */
-    padding: 20px;
-    margin-top: 80px; /* Más margen superior para que no choque con los botones de la esquina */
-    margin-bottom: 20px;
-  }
 }

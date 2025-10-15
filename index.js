@@ -26,9 +26,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
+// 🔹 CONFIGURACIÓN CORREGIDA DE HANDLEBARS
 app.engine('handlebars', engine({ 
     defaultLayout: 'main',
     helpers: {
+        // Esta función es la que permite usar {{#section 'scripts'}} en tus vistas
         section: function(name, options) {
             if (!this._sections) this._sections = {};
             this._sections[name] = options.fn(this);
@@ -115,25 +117,19 @@ app.get('/login', (req, res) => {
   res.render('login', { title: 'Iniciar sesión', mensaje });
 });
 
-// 🔹 RUTA DE LOGIN CORREGIDA
 app.post('/login', async (req, res) => {
   const correo = (req.body.email || '').trim();
   const pass = (req.body.pass || '').trim();
   try {
-    // 1. Buscamos al usuario solo por su correo
     const usuarioEncontrado = await Usuario.findOne({ correo: correo });
-    if (!usuarioEncontrado) {
-      return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
-    }
+    if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
     
-    // 2. Usamos bcrypt.compare para verificar la contraseña
     const esCorrecta = await bcrypt.compare(pass, usuarioEncontrado.contraseña);
     
     if (!esCorrecta) {
       return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
     }
 
-    // 3. Si la contraseña es correcta, iniciamos sesión
     console.log('Inicio de sesión exitoso:', usuarioEncontrado.usuario);
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', usuarioEncontrado.usuario, opciones);

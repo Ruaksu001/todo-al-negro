@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Conectar con el servidor de Socket.IO
+    // La comprobación inicial ya no es necesaria
     const socket = io();
 
     // Elementos del DOM
@@ -86,29 +86,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function quitarSeleccion() {
-        const seleccionados = document.querySelectorAll('.seleccionado');
-        seleccionados.forEach(el => el.classList.remove('seleccionado'));
+        document.querySelectorAll('.seleccionado').forEach(el => el.classList.remove('seleccionado'));
     }
 
-    numerosApostables.forEach(numeroEl => {
-        numeroEl.addEventListener('click', () => {
+    numerosApostables.forEach(el => {
+        el.addEventListener('click', () => {
             if (btnGirar.disabled) return;
             quitarSeleccion();
-            numeroEl.classList.add('seleccionado');
+            el.classList.add('seleccionado');
             apuestaActual.tipo = 'pleno';
-            apuestaActual.valor = parseInt(numeroEl.dataset.numero, 10);
+            apuestaActual.valor = parseInt(el.dataset.numero, 10);
             mensajeDisplay.textContent = `Apostando al número ${apuestaActual.valor}. Ingresa un monto.`;
         });
     });
 
-    apuestasExternas.forEach(apuestaEl => {
-        apuestaEl.addEventListener('click', () => {
+    apuestasExternas.forEach(el => {
+        el.addEventListener('click', () => {
             if (btnGirar.disabled) return;
             quitarSeleccion();
-            apuestaEl.classList.add('seleccionado');
-            apuestaActual.tipo = 'color';
-            apuestaActual.valor = apuestaEl.dataset.bet;
-            mensajeDisplay.textContent = `Apostando al color ${apuestaActual.valor}. Ingresa un monto.`;
+            el.classList.add('seleccionado');
+            
+            const [tipo, valor] = el.dataset.bet.split('-');
+            apuestaActual.tipo = tipo;
+            apuestaActual.valor = valor;
+            
+            let textoApuesta = valor.toUpperCase();
+            if (tipo === 'docena') textoApuesta = `Docena ${valor}`;
+            if (tipo === 'columna') textoApuesta = `Columna ${valor}`;
+            if (tipo === 'mitad') textoApuesta = valor === 'falta' ? '1-18' : '19-36';
+            
+            mensajeDisplay.textContent = `Apostando a ${textoApuesta}. Ingresa un monto.`;
         });
     });
 
@@ -125,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         btnGirar.disabled = true;
         inputApuesta.disabled = true;
-        mensajeDisplay.textContent = `¡Apostaste ${apuestaActual.monto.toLocaleString('es-CL')} al ${apuestaActual.valor}! Girando...`;
+        mensajeDisplay.textContent = `¡Apostaste ${apuestaActual.monto.toLocaleString('es-CL')}! Girando...`;
 
         ruletaGiratoria.style.transition = 'none';
         ruletaGiratoria.style.transform = 'rotate(0deg)';
@@ -133,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const indiceGanador = Math.floor(Math.random() * numerosRuleta.length);
         const numeroGanador = numerosRuleta[indiceGanador];
+        const num = numeroGanador.num;
         const anguloPorDivision = 360 / numerosRuleta.length;
         const targetAngle = 360 - (indiceGanador * anguloPorDivision) - (anguloPorDivision / 2);
         const vueltasCompletas = 5;
@@ -149,18 +157,44 @@ document.addEventListener('DOMContentLoaded', () => {
             let resultadoApuesta = 'Perdida';
             let tipoDeApuestaTexto = '';
 
-            if (apuestaActual.tipo === 'pleno' && numeroGanador.num === apuestaActual.valor) {
-                ganancia = apuestaActual.monto * 36;
-                resultadoApuesta = 'Ganada';
-                tipoDeApuestaTexto = `Pleno ${apuestaActual.valor}`;
-            } else if (apuestaActual.tipo === 'color' && numeroGanador.color === apuestaActual.valor) {
-                ganancia = apuestaActual.monto * 2;
-                resultadoApuesta = 'Ganada';
-                tipoDeApuestaTexto = `Color ${apuestaActual.valor}`;
-            } else {
-                tipoDeApuestaTexto = apuestaActual.tipo === 'pleno' ? `Pleno ${apuestaActual.valor}` : `Color ${apuestaActual.valor}`;
+            switch (apuestaActual.tipo) {
+                case 'pleno':
+                    tipoDeApuestaTexto = `Pleno ${apuestaActual.valor}`;
+                    if (num === apuestaActual.valor) ganancia = apuestaActual.monto * 36;
+                    break;
+                case 'color':
+                    tipoDeApuestaTexto = `Color ${apuestaActual.valor}`;
+                    if (num !== 0 && numeroGanador.color === apuestaActual.valor) ganancia = apuestaActual.monto * 2;
+                    break;
+                case 'paridad':
+                    tipoDeApuestaTexto = apuestaActual.valor === 'par' ? 'Par' : 'Impar';
+                    if (num !== 0 && ((num % 2 === 0 && apuestaActual.valor === 'par') || (num % 2 !== 0 && apuestaActual.valor === 'impar'))) {
+                        ganancia = apuestaActual.monto * 2;
+                    }
+                    break;
+                case 'mitad':
+                    tipoDeApuestaTexto = apuestaActual.valor === 'falta' ? '1-18 (Falta)' : '19-36 (Pasa)';
+                    if (num >= 1 && num <= 18 && apuestaActual.valor === 'falta') ganancia = apuestaActual.monto * 2;
+                    if (num >= 19 && num <= 36 && apuestaActual.valor === 'pasa') ganancia = apuestaActual.monto * 2;
+                    break;
+                case 'docena':
+                    tipoDeApuestaTexto = `Docena ${apuestaActual.valor}`;
+                    if (num >= 1 && num <= 12 && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
+                    if (num >= 13 && num <= 24 && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
+                    if (num >= 25 && num <= 36 && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
+                    break;
+                case 'columna':
+                    tipoDeApuestaTexto = `Columna ${apuestaActual.valor}`;
+                    const col1 = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34];
+                    const col2 = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35];
+                    const col3 = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36];
+                    if (col1.includes(num) && apuestaActual.valor === '1') ganancia = apuestaActual.monto * 3;
+                    if (col2.includes(num) && apuestaActual.valor === '2') ganancia = apuestaActual.monto * 3;
+                    if (col3.includes(num) && apuestaActual.valor === '3') ganancia = apuestaActual.monto * 3;
+                    break;
             }
 
+            if (ganancia > 0) resultadoApuesta = 'Ganada';
             saldo += ganancia;
 
             const apuestaInfo = {
