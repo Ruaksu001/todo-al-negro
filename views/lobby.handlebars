@@ -8,105 +8,112 @@
 </div>
 
 <main class="pagina-lobby">
-    <h1>Mesa de Ruleta Europea</h1>
+    <h1>Ruleta Europea</h1>
 
-    <section class="mesa-ruleta">
-      <div id="ruleta-container">
-        <svg id="ruleta-svg" viewBox="0 0 200 200">
-          <g id="ruleta-giratoria" transform-origin="100 100">
-            <circle cx="100" cy="100" r="98" fill="#2c3e50"/>
-            <circle cx="100" cy="100" r="90" fill="#34495e"/>
-            <circle cx="100" cy="100" r="20" fill="#1c2833"/>
-          </g>
-          <polygon points="95,5 105,5 100,15" fill="#e74c3c"/>
-        </svg>
-      </div>
-        
-      <div class="controles-juego">
-          <p id="mensaje-juego">Selecciona una opción y un monto para apostar</p>
-          <div class="saldo-display">Saldo actual: <strong id="saldo-actual">{{saldo}} fichas</strong></div>
-          <input type="number" id="monto-apuesta" placeholder="Monto de la apuesta">
-          <button id="btn-girar">Girar la Ruleta</button>
-      </div>
-    </section>
+    <div class="lobby-layout">
 
-    <section id="mesa-de-apuestas">
-      <div class="numero-apuesta verde" data-numero="0">0</div>
-      <div id="numeros-grid">
-        <div class="numero-apuesta rojo" data-numero="3">3</div>
-        <div class="numero-apuesta negro" data-numero="6">6</div>
-        <div class="numero-apuesta rojo" data-numero="9">9</div>
-        <div class="numero-apuesta rojo" data-numero="12">12</div>
-        <div class="numero-apuesta negro" data-numero="15">15</div>
-        <div class="numero-apuesta rojo" data-numero="18">18</div>
-        <div class="numero-apuesta rojo" data-numero="21">21</div>
-        <div class="numero-apuesta negro" data-numero="24">24</div>
-        <div class="numero-apuesta rojo" data-numero="27">27</div>
-        <div class="numero-apuesta rojo" data-numero="30">30</div>
-        <div class="numero-apuesta negro" data-numero="33">33</div>
-        <div class="numero-apuesta rojo" data-numero="36">36</div>
-        <div class="apuesta-columna apuesta-externa" data-bet="columna-3">2-1</div>
-        
-        <div class="numero-apuesta negro" data-numero="2">2</div>
-        <div class="numero-apuesta rojo" data-numero="5">5</div>
-        <div class="numero-apuesta negro" data-numero="8">8</div>
-        <div class="numero-apuesta negro" data-numero="11">11</div>
-        <div class="numero-apuesta rojo" data-numero="14">14</div>
-        <div class="numero-apuesta negro" data-numero="17">17</div>
-        <div class="numero-apuesta negro" data-numero="20">20</div>
-        <div class="numero-apuesta rojo" data-numero="23">23</div>
-        <div class="numero-apuesta negro" data-numero="26">26</div>
-        <div class="numero-apuesta negro" data-numero="29">29</div>
-        <div class="numero-apuesta rojo" data-numero="32">32</div>
-        <div class="numero-apuesta negro" data-numero="35">35</div>
-        <div class="apuesta-columna apuesta-externa" data-bet="columna-2">2-1</div>
+        <div class="lobby-left-column">
+            <section class="mesa-ruleta">
+              <div id="ruleta-container">
+                <svg id="ruleta-svg" viewBox="0 0 200 200">
+                  <g id="ruleta-giratoria" transform-origin="100 100">
+                    <circle cx="100" cy="100" r="98" fill="#2c3e50"/>
+                    <circle cx="100" cy="100" r="90" fill="#34495e"/>
+                    <circle cx="100" cy="100" r="20" fill="#1c2833"/>
+                  </g>
+                  <polygon points="95,5 105,5 100,15" fill="#e74c3c"/>
+                </svg>
+              </div>
+              <div class="controles-juego">
+                  <p id="mensaje-juego">Selecciona una opción y un monto para apostar</p>
+                  <div class="saldo-display">Saldo actual: <strong id="saldo-actual">{{saldo}} fichas</strong></div>
+                  <input type="number" id="monto-apuesta" placeholder="Monto de la apuesta">
+                  <button id="btn-girar">Girar la Ruleta</button>
+              </div>
+            </section>
 
-        <div class="numero-apuesta rojo" data-numero="1">1</div>
-        <div class="numero-apuesta negro" data-numero="4">4</div>
-        <div class="numero-apuesta rojo" data-numero="7">7</div>
-        <div class="numero-apuesta negro" data-numero="10">10</div>
-        <div class="numero-apuesta negro" data-numero="13">13</div>
-        <div class="numero-apuesta rojo" data-numero="16">16</div>
-        <div class="numero-apuesta rojo" data-numero="19">19</div>
-        <div class="numero-apuesta negro" data-numero="22">22</div>
-        <div class="numero-apuesta rojo" data-numero="25">25</div>
-        <div class="numero-apuesta negro" data-numero="28">28</div>
-        <div class="numero-apuesta negro" data-numero="31">31</div>
-        <div class="numero-apuesta rojo" data-numero="34">34</div>
-        <div class="apuesta-columna apuesta-externa" data-bet="columna-1">2-1</div>
-      </div>
-      
-      <div id="apuestas-docenas">
-        <div class="apuesta-externa apuesta-docena" data-bet="docena-1">1st 12</div>
-        <div class="apuesta-externa apuesta-docena" data-bet="docena-2">2nd 12</div>
-        <div class="apuesta-externa apuesta-docena" data-bet="docena-3">3rd 12</div>
-      </div>
+            <section id="mesa-de-apuestas">
+              <div class="numero-apuesta verde" data-numero="0">0</div>
+              <div id="numeros-grid">
+                <div class="numero-apuesta rojo" data-numero="3">3</div>
+                <div class="numero-apuesta negro" data-numero="6">6</div>
+                <div class="numero-apuesta rojo" data-numero="9">9</div>
+                <div class="numero-apuesta rojo" data-numero="12">12</div>
+                <div class="numero-apuesta negro" data-numero="15">15</div>
+                <div class="numero-apuesta rojo" data-numero="18">18</div>
+                <div class="numero-apuesta rojo" data-numero="21">21</div>
+                <div class="numero-apuesta negro" data-numero="24">24</div>
+                <div class="numero-apuesta rojo" data-numero="27">27</div>
+                <div class="numero-apuesta rojo" data-numero="30">30</div>
+                <div class="numero-apuesta negro" data-numero="33">33</div>
+                <div class="numero-apuesta rojo" data-numero="36">36</div>
+                <div class="apuesta-columna apuesta-externa" data-bet="columna-3">2-1</div>
+                <div class="numero-apuesta negro" data-numero="2">2</div>
+                <div class="numero-apuesta rojo" data-numero="5">5</div>
+                <div class="numero-apuesta negro" data-numero="8">8</div>
+                <div class="numero-apuesta negro" data-numero="11">11</div>
+                <div class="numero-apuesta rojo" data-numero="14">14</div>
+                <div class="numero-apuesta negro" data-numero="17">17</div>
+                <div class="numero-apuesta negro" data-numero="20">20</div>
+                <div class="numero-apuesta rojo" data-numero="23">23</div>
+                <div class="numero-apuesta negro" data-numero="26">26</div>
+                <div class="numero-apuesta negro" data-numero="29">29</div>
+                <div class="numero-apuesta rojo" data-numero="32">32</div>
+                <div class="numero-apuesta negro" data-numero="35">35</div>
+                <div class="apuesta-columna apuesta-externa" data-bet="columna-2">2-1</div>
+                <div class="numero-apuesta rojo" data-numero="1">1</div>
+                <div class="numero-apuesta negro" data-numero="4">4</div>
+                <div class="numero-apuesta rojo" data-numero="7">7</div>
+                <div class="numero-apuesta negro" data-numero="10">10</div>
+                <div class="numero-apuesta negro" data-numero="13">13</div>
+                <div class="numero-apuesta rojo" data-numero="16">16</div>
+                <div class="numero-apuesta rojo" data-numero="19">19</div>
+                <div class="numero-apuesta negro" data-numero="22">22</div>
+                <div class="numero-apuesta rojo" data-numero="25">25</div>
+                <div class="numero-apuesta negro" data-numero="28">28</div>
+                <div class="numero-apuesta negro" data-numero="31">31</div>
+                <div class="numero-apuesta rojo" data-numero="34">34</div>
+                <div class="apuesta-columna apuesta-externa" data-bet="columna-1">2-1</div>
+              </div>
+              <div id="apuestas-docenas">
+                <div class="apuesta-externa apuesta-docena" data-bet="docena-1">1st 12</div>
+                <div class="apuesta-externa apuesta-docena" data-bet="docena-2">2nd 12</div>
+                <div class="apuesta-externa apuesta-docena" data-bet="docena-3">3rd 12</div>
+              </div>
+              <div id="apuestas-simples">
+                <div class="apuesta-externa apuesta-simple" data-bet="mitad-falta">1-18</div>
+                <div class="apuesta-externa apuesta-simple" data-bet="paridad-par">PAR</div>
+                <div class="apuesta-externa apuesta-rojo apuesta-simple" data-bet="color-rojo"></div>
+                <div class="apuesta-externa apuesta-negro apuesta-simple" data-bet="color-negro"></div>
+                <div class="apuesta-externa apuesta-simple" data-bet="paridad-impar">IMPAR</div>
+                <div class="apuesta-externa apuesta-simple" data-bet="mitad-pasa">19-36</div>
+              </div>
+            </section>
+        </div>
 
-      <div id="apuestas-simples">
-        <div class="apuesta-externa apuesta-simple" data-bet="mitad-falta">1-18</div>
-        <div class="apuesta-externa apuesta-simple" data-bet="paridad-par">PAR</div>
-        <div class="apuesta-externa apuesta-rojo apuesta-simple" data-bet="color-rojo"></div>
-        <div class="apuesta-externa apuesta-negro apuesta-simple" data-bet="color-negro"></div>
-        <div class="apuesta-externa apuesta-simple" data-bet="paridad-impar">IMPAR</div>
-        <div class="apuesta-externa apuesta-simple" data-bet="mitad-pasa">19-36</div>
-      </div>
-    </section>
+        <div class="lobby-right-column">
+            <section class="historial-completo historial-box">
+                <h2>Historial de Juego</h2>
+                
+                <div class="historial-apuestas">
+                    <h3>Últimas 5 apuestas</h3>
+                    <table>
+                        <thead>
+                            <tr><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Resultado</th><th>Variación</th></tr>
+                        </thead>
+                        <tbody id="tabla-apuestas-body"></tbody>
+                    </table>
+                </div>
 
-    <section class="ganadores">
-        <h2>Últimos 5 números ganadores</h2>
-        <ul id="lista-ganadores"></ul>
-    </section>
+                <hr style="border-color: #555; margin: 15px 0;"> <div class="historial-ganadores">
+                    <h3>Últimos 5 números</h3>
+                    <div id="lista-ganadores-horizontal">
+                        </div>
+                </div>
+            </section>
+        </div>
 
-    <section class="apuestas">
-        <h2>Últimas 5 apuestas</h2>
-        <table>
-            <thead>
-                <tr><th>Usuario</th><th>Tipo</th><th>Monto</th><th>Resultado</th><th>Variación</th></tr>
-            </thead>
-            <tbody id="tabla-apuestas-body"></tbody>
-        </table>
-    </section>
-</main>
+    </div> </main>
 
 <script id="initial-data" type="application/json">
     {
