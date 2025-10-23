@@ -26,11 +26,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 
-// 🔹 CONFIGURACIÓN CORREGIDA DE HANDLEBARS
-app.engine('handlebars', engine({ 
+app.engine('handlebars', engine({
     defaultLayout: 'main',
     helpers: {
-        // Esta función es la que permite usar {{#section 'scripts'}} en tus vistas
         section: function(name, options) {
             if (!this._sections) this._sections = {};
             this._sections[name] = options.fn(this);
@@ -87,15 +85,15 @@ app.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(contraseña, salt);
 
-    const nuevoUsuario = new Usuario({ 
-        nombre, 
-        usuario, 
-        correo, 
+    const nuevoUsuario = new Usuario({
+        nombre,
+        usuario,
+        correo,
         contraseña: hashedPassword,
-        seguridad, 
-        fecha 
+        seguridad,
+        fecha
     });
-    
+
     await nuevoUsuario.save();
     console.log('Usuario registrado en MongoDB con contraseña encriptada:', usuario);
 
@@ -123,9 +121,9 @@ app.post('/login', async (req, res) => {
   try {
     const usuarioEncontrado = await Usuario.findOne({ correo: correo });
     if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
-    
+
     const esCorrecta = await bcrypt.compare(pass, usuarioEncontrado.contraseña);
-    
+
     if (!esCorrecta) {
       return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
     }
@@ -166,13 +164,13 @@ app.get('/perfil', (req, res) => {
   }
   const id = String(hash).padStart(6, '0');
   
-  res.render('perfil', { 
-      title: 'Perfil', 
-      username: username, 
+  res.render('perfil', {
+      title: 'Perfil',
+      username: username,
       usertag: `@${usertag}`,
       id: id,
-      saldo: Number(saldo).toLocaleString('es-CL'), 
-      mensaje: mensaje 
+      saldo: Number(saldo).toLocaleString('es-CL'),
+      mensaje: mensaje
   });
 });
 
@@ -183,11 +181,8 @@ app.get('/lobby', async (req, res) => {
             Usuario.findOne({ usuario: req.cookies.usuario }).lean(),
             GameState.findById('main_game_state').lean()
         ]);
-
         if (!usuarioData) return res.redirect('/login');
-
         const currentGameState = gameState || { historialGanadores: [], historialApuestas: [] };
-
         res.render('lobby', {
             title: 'Lobby',
             saldo: Number(usuarioData.saldo).toLocaleString('es-CL'),
@@ -201,14 +196,139 @@ app.get('/lobby', async (req, res) => {
     }
 });
 
+// --- RUTA GET PARA TRANSACCIONES (CON MANEJO DE NUEVOS ERRORES) ---
+app.get('/transacciones', async (req, res) => {
+    if (!req.cookies.usuario) return res.redirect('/login');
+
+    try {
+        const usuarioData = await Usuario.findOne({ usuario: req.cookies.usuario }).lean();
+        if (!usuarioData) return res.redirect('/login');
+        res.cookie('saldo', usuarioData.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+        let mensajeRecarga = null, errorRecarga = null, mensajeRetiro = null, errorRetiro = null;
+
+        const status = req.query.status;
+        if (status === 'recarga_ok') mensajeRecarga = '¡Recarga exitosa!';
+        else if (status === 'recarga_error_monto') errorRecarga = 'El monto debe ser un número positivo.';
+        else if (status === 'recarga_error_tarjeta') errorRecarga = 'El número de tarjeta debe tener 16 dígitos.'; // 🔹 Nuevo
+        else if (status === 'recarga_error_cvv') errorRecarga = 'El CVV debe tener 3 dígitos.'; // 🔹 Nuevo
+        else if (status === 'recarga_error_fecha') errorRecarga = 'Formato de fecha inválido (MM/AA).'; // 🔹 Nuevo
+        else if (status === 'recarga_error_nombre') errorRecarga = 'El nombre del titular solo puede contener letras y espacios.'; // 🔹 Nuevo
+        else if (status === 'recarga_error_general') errorRecarga = 'Error al procesar la recarga.';
+        else if (status === 'retiro_ok') mensajeRetiro = '¡Retiro exitoso!';
+        else if (status === 'retiro_error_monto') errorRetiro = 'El monto debe ser un número positivo.';
+        else if (status === 'retiro_error_cuenta') errorRetiro = 'El número de cuenta debe contener solo dígitos.';
+        else if (status === 'saldo_insuficiente') errorRetiro = 'No tienes saldo suficiente para este retiro.';
+        else if (status === 'retiro_error_general') errorRetiro = 'Error al procesar el retiro.';
+
+        res.render('transacciones', {
+            title: 'Transacciones',
+            saldo: Number(usuarioData.saldo).toLocaleString('es-CL'),
+            mensajeRecarga,
+            errorRecarga,
+            mensajeRetiro,
+            errorRetiro
+        });
+    } catch (error) {
+        console.error("Error al cargar transacciones:", error);
+        res.redirect('/perfil');
+    }
+});
+
+// --- RUTA POST PARA RECARGAR SALDO (CON VALIDACIONES MÁS ESPECÍFICAS) ---
+app.post('/transacciones/recargar', async (req, res) => {
+    if (!req.cookies.usuario) return res.redirect('/login');
+
+    try {
+        const montoRecarga = Number(req.body.monto);
+        const numeroTarjeta = req.body.numeroTarjeta.replace(/\s/g, ''); // Quita espacios
+        const cvv = req.body.cvv;
+        const fechaVencimiento = req.body.fv;
+        const nombreTitular = req.body.nombreTitular;
+
+        // 🔹 Validaciones más específicas
+        if (isNaN(montoRecarga) || montoRecarga <= 0) {
+            return res.redirect('/transacciones?status=recarga_error_monto');
+        }
+        if (!/^\d{16}$/.test(numeroTarjeta)) { // Exactamente 16 dígitos
+            return res.redirect('/transacciones?status=recarga_error_tarjeta');
+        }
+        if (!/^\d{3}$/.test(cvv)) { // Exactamente 3 dígitos
+             return res.redirect('/transacciones?status=recarga_error_cvv');
+        }
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(fechaVencimiento)) { // Formato MM/AA
+            return res.redirect('/transacciones?status=recarga_error_fecha');
+        }
+        if (!/^[a-zA-Z\s]+$/.test(nombreTitular)) { // Solo letras y espacios
+            return res.redirect('/transacciones?status=recarga_error_nombre');
+        }
+
+        const usuario = req.cookies.usuario;
+        const resultado = await Usuario.findOneAndUpdate(
+            { usuario: usuario },
+            { $inc: { saldo: montoRecarga } },
+            { new: true }
+        );
+
+        if (!resultado) return res.redirect('/login');
+        res.cookie('saldo', resultado.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+
+        console.log(`Recarga exitosa para ${usuario}: +${montoRecarga}`);
+        return res.redirect('/transacciones?status=recarga_ok');
+
+    } catch (error) {
+        console.error("Error en la recarga:", error);
+        return res.redirect('/transacciones?status=recarga_error_general');
+    }
+});
+
+// --- RUTA POST PARA RETIRAR SALDO (CON VALIDACIONES) ---
+app.post('/transacciones/retirar', async (req, res) => {
+    if (!req.cookies.usuario) return res.redirect('/login');
+
+    try {
+        const montoRetiro = Number(req.body.monto);
+        const numeroCuenta = req.body.numeroCuenta;
+        // 🔹 Puedes añadir validaciones similares para nombreDestino, rutDestino, banco si lo deseas
+
+        if (isNaN(montoRetiro) || montoRetiro <= 0) {
+            return res.redirect('/transacciones?status=retiro_error_monto');
+        }
+         if (!/^\d+$/.test(numeroCuenta)) {
+             return res.redirect('/transacciones?status=retiro_error_cuenta');
+         }
+
+        const usuario = req.cookies.usuario;
+        const usuarioData = await Usuario.findOne({ usuario: usuario });
+        if (!usuarioData) return res.redirect('/login');
+
+        if (usuarioData.saldo < montoRetiro) {
+            return res.redirect('/transacciones?status=saldo_insuficiente');
+        }
+
+        const resultado = await Usuario.findOneAndUpdate(
+            { usuario: usuario },
+            { $inc: { saldo: -montoRetiro } },
+            { new: true }
+        );
+
+        if (!resultado) return res.redirect('/login');
+        res.cookie('saldo', resultado.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+        
+        console.log(`Retiro exitoso para ${usuario}: -${montoRetiro}`);
+        return res.redirect('/transacciones?status=retiro_ok');
+
+    } catch (error) {
+        console.error("Error en el retiro:", error);
+        return res.redirect('/transacciones?status=retiro_error_general');
+    }
+});
+
 app.post('/perfil/eliminar', async (req, res) => {
   try {
     const usuarioAEliminar = req.cookies.usuario;
     if (!usuarioAEliminar) return res.redirect('/login');
-    
     await Usuario.deleteOne({ usuario: usuarioAEliminar });
-    console.log(`✅ Usuario eliminado: ${usuarioAEliminar}`);
-
     res.clearCookie('usuario');
     res.clearCookie('nombre');
     res.clearCookie('saldo');
@@ -219,7 +339,7 @@ app.post('/perfil/eliminar', async (req, res) => {
   }
 });
 
-app.get('/transacciones', (req, res) => res.render('transacciones', { title: 'Transacciones' }));
+// Rutas estáticas
 app.get('/about', (req, res) => res.render('about', { title: 'Acerca de' }));
 app.get('/baseslegales', (req, res) => res.render('baseslegales', { title: 'Bases legales' }));
 app.get('/forgot', (req, res) => res.render('forgot', { title: 'Recuperar contraseña' }));
@@ -233,31 +353,15 @@ io.on('connection', (socket) => {
   socket.on('nueva-jugada', async (data) => {
     try {
       await Usuario.updateOne({ usuario: data.usertag }, { $set: { saldo: data.saldo } });
-      
-      const updatedGameState = await GameState.findByIdAndUpdate(
-        'main_game_state',
-        { $set: { 
-            historialGanadores: data.historialGanadores,
-            historialApuestas: data.historialApuestas
-          }},
-        { new: true, upsert: true, lean: true }
-      );
-      
-      io.emit('actualizar-historial', {
-        historialGanadores: updatedGameState.historialGanadores,
-        historialApuestas: updatedGameState.historialApuestas
-      });
-
-    } catch (error) {
-      console.error('Error al procesar la jugada:', error);
-    }
+      const updatedGameState = await GameState.findByIdAndUpdate('main_game_state',{ $set: { historialGanadores: data.historialGanadores, historialApuestas: data.historialApuestas }}, { new: true, upsert: true, lean: true });
+      io.emit('actualizar-historial', {historialGanadores: updatedGameState.historialGanadores, historialApuestas: updatedGameState.historialApuestas});
+    } catch (error) { console.error('Error al procesar la jugada:', error); }
   });
 
   socket.on('disconnect', () => {
     console.log('❌ Un usuario se ha desconectado');
   });
 });
-
 
 // ===============================
 // Iniciar Servidor

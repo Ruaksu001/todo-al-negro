@@ -1,20 +1,32 @@
 <a href="/lobby" class="upleft">Volver al lobby</a>
 
-<div class="contenedort">
+<div class="contenedort" style="max-width: 500px; margin: 60px auto;">
     <div><h1>Transacciones</h1></div>
     <hr>
-    <div class="saldot"><h2>Saldo: <span style="color:green">80.000$</span></h2></div>
+    
+    <div class="saldot"><h2>Saldo Actual: <span style="color:green">{{saldo}} Fichas</span></h2></div>
     <hr>
 
     <div class="recargarplata">
         <h2>Recarga</h2>
-        <form>
-            <input type="text" name="number" placeholder="Numero de tarjeta"/>
-            <input type="text" name="fv" placeholder="Fecha de Vencimiento"/> 
-            <input type="text" name="cv" placeholder="CV"/>
-            <input type="text" placeholder="Nombre titular"/>
-            <input type="number" name="monto" placeholder="Monto"/>
-            <button class="recarga">Recargar</button>
+
+        {{#if mensajeRecarga}}
+            <div style="background-color: #27ae60; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                {{mensajeRecarga}}
+            </div>
+        {{/if}}
+        {{#if errorRecarga}}
+            <div style="background-color: #c0392b; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                {{errorRecarga}}
+            </div>
+        {{/if}}
+
+        <form method="post" action="/transacciones/recargar">
+            <input type="text" name="numeroTarjeta" placeholder="Numero de tarjeta (ficticio)" required />
+            <input type="text" name="fv" placeholder="Fecha Vencimiento (MM/AA)" required maxlength="5" /> <input type="text" name="cvv" placeholder="CVV (ficticio)" required />
+            <input type="text" name="nombreTitular" placeholder="Nombre titular" required />
+            <input type="number" name="monto" placeholder="Monto a recargar" required min="1" />
+            <button type="submit" class="recarga">Recargar Saldo</button>
         </form>
     </div>
 
@@ -22,13 +34,33 @@
 
     <div class="retirarplata">
         <h2>Retiro</h2>
-        <form>
-            <input type="text" placeholder="Nombre"/>
-            <input type="text" placeholder="Rut"/>
-            <input type="text" placeholder="Numero de Cuenta"/>
-            <input type="text" placeholder="Banco"/>
-            <input type="number" placeholder="Monto"/>
-            <br><button class="retiro">Retirar</button>
+
+         {{#if mensajeRetiro}}
+            <div style="background-color: #27ae60; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                {{mensajeRetiro}}
+            </div>
+        {{/if}}
+        {{#if errorRetiro}}
+            <div style="background-color: #c0392b; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                {{errorRetiro}}
+            </div>
+        {{/if}}
+
+        <form method="post" action="/transacciones/retirar">
+            <input type="text" name="nombreDestino" placeholder="Nombre Destinatario" required/>
+            <input type="text" name="rutDestino" placeholder="RUT Destinatario" required/>
+            <input type="text" name="numeroCuenta" placeholder="Numero de Cuenta" required/>
+            <input type="text" name="banco" placeholder="Banco" required/>
+            <input type="number" name="monto" placeholder="Monto a retirar" required min="1"/>
+            <br><button type="submit" class="retiro">Retirar Saldo</button>
         </form>
     </div>
 </div>
+
+<script>
+  document.body.classList.add('pagina-larga');
+</script>
+
+{{#section 'scripts'}}
+  <script src="/js/transacciones.js"></script>
+{{/section}}
