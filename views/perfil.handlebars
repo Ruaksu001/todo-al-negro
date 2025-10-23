@@ -25,12 +25,19 @@
   <div class="parrafo2tran">
     <h2 class="historialt">Historial de Transacciones</h2>
     <table>
-      <tr><th>Tipo</th><th>Fecha</th><th>Monto</th></tr>
-      <tr><td>Recarga</td><td>08/05/25</td><td>15.000</td></tr>
-      <tr><td>Recarga</td><td>09/05/25</td><td>1.000</td></tr>
-      <tr><td>Recarga</td><td>09/05/25</td><td>4.000</td></tr>
-      <tr><td>Retiro</td><td>10/05/25</td><td>100.000</td></tr>
-      <tr><td>Recarga</td><td>23/05/25</td><td>18.000</td></tr>
+      <thead> <tr><th>Tipo</th><th>Fecha</th><th>Monto</th></tr>
+      </thead>
+      <tbody> {{#each historialTransacciones}}
+          <tr>
+            <td>{{this.tipo}}</td>
+            <td>{{formatDate this.fecha}}</td> <td>{{this.monto}}</td>
+          </tr>
+        {{else}}
+          <tr>
+            <td colspan="3" style="text-align: center; font-style: italic;">No hay transacciones recientes.</td>
+          </tr>
+        {{/each}}
+      </tbody>
     </table>
   </div>
 
