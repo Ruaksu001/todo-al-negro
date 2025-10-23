@@ -3,49 +3,48 @@
 // ===============================
 
 // Importación de módulos necesarios
-const express = require('express'); // Framework para crear el servidor web
-const { engine } = require('express-handlebars'); // Motor de plantillas para las vistas HTML
-const bodyParser = require('body-parser'); // Middleware para procesar datos de formularios
-const path = require('path'); // Módulo para trabajar con rutas de archivos y directorios
-const cookieParser = require('cookie-parser'); // Middleware para manejar cookies
+const express = require('express'); // Framework web para Node.js
+const { engine } = require('express-handlebars'); // Motor de plantillas para HTML dinámico
+const bodyParser = require('body-parser'); // Middleware para leer datos de formularios
+const path = require('path'); // Módulo para trabajar con rutas de archivos
+const cookieParser = require('cookie-parser'); // Middleware para gestionar cookies (sesiones)
 const mongoose = require('mongoose'); // Librería para interactuar con MongoDB
-const http = require('http'); // Módulo nativo de Node.js para crear un servidor HTTP
+const http = require('http'); // Módulo Node.js para crear el servidor HTTP
 const { Server } = require("socket.io"); // Librería para comunicación en tiempo real (WebSockets)
 const bcrypt = require('bcrypt'); // Librería para encriptar contraseñas
 
-// Inicialización de Express y creación del servidor HTTP
+// Inicialización de Express y servidor HTTP
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server); // Inicialización de Socket.IO
+const server = http.createServer(app); // Se crea el servidor HTTP usando Express
+const io = new Server(server); // Se inicializa Socket.IO sobre el servidor HTTP
 
-// Definición del puerto en el que escuchará el servidor
+// Puerto en el que escuchará el servidor
 const port = 80;
 
 // ===============================
-// Configuración y Middlewares
+// Configuración y Middlewares (Funciones que se ejecutan en cada petición)
 // ===============================
 
-// Configuración de body-parser para leer datos JSON y de formularios URL-encoded
+// Middleware para parsear cuerpos de petición en formato JSON
 app.use(bodyParser.json());
+// Middleware para parsear cuerpos de petición codificados en URL (formularios HTML)
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// Configuración para servir archivos estáticos (CSS, JS de cliente, imágenes) desde la carpeta 'public'
+// Middleware para servir archivos estáticos (CSS, JS de cliente, imágenes) desde la carpeta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Habilitar el manejo de cookies
+// Middleware para parsear cookies enviadas por el navegador
 app.use(cookieParser());
 
 // Configuración del motor de plantillas Handlebars
 app.engine('handlebars', engine({
-    defaultLayout: 'main', // Plantilla principal por defecto
+    defaultLayout: 'main', // Define el layout principal (plantilla base)
     helpers: {
-        // Helper 'section' para insertar scripts específicos en vistas individuales
+        // Helper 'section': Permite insertar bloques de contenido (como scripts) desde vistas específicas en el layout principal
         section: function(name, options) {
             if (!this._sections) this._sections = {};
             this._sections[name] = options.fn(this);
             return null;
         },
-        // Helper 'formatDate' para mostrar fechas en formato DD/MM/YY
+        // Helper 'formatDate': Formatea objetos Date a DD/MM/YY
         formatDate: function(date) {
             if (!date) return '';
             const d = new Date(date);
@@ -56,82 +55,77 @@ app.engine('handlebars', engine({
         }
     }
 }));
-app.set('view engine', 'handlebars'); // Establecer Handlebars como motor de vistas
-app.set('views', path.join(__dirname, 'views')); // Directorio donde se encuentran las vistas (.handlebars)
+app.set('view engine', 'handlebars'); // Establece Handlebars como motor de vistas
+app.set('views', path.join(__dirname, 'views')); // Define la carpeta donde están los archivos .handlebars
 
 // ===============================
-// Modelos de Mongoose (Definición de la estructura de datos en MongoDB)
+// Modelos de Mongoose (Define la estructura de los datos en MongoDB)
 // ===============================
 
-// Esquema para los usuarios
+// Esquema para la colección de Usuarios
 const UsuarioSchema = new mongoose.Schema({
-  nombre: String, // Nombre completo del usuario
-  usuario: { type: String, unique: true }, // Nombre de usuario (único)
-  correo: { type: String, unique: true }, // Correo electrónico (único)
-  contraseña: String, // Contraseña (se guarda encriptada)
-  seguridad: String, // Respuesta a pregunta de seguridad
-  fecha: String, // Fecha (posiblemente de nacimiento u otra relevante)
-  saldo: { type: Number, default: 10000 }, // Saldo de fichas del usuario, 10000 por defecto
-  historialTransacciones: { type: Array, default: [] } // Array para guardar las últimas transacciones (recargas/retiros)
+  nombre: String,                       // Nombre completo
+  usuario: { type: String, unique: true }, // Nombre de usuario (debe ser único)
+  correo: { type: String, unique: true },  // Correo electrónico (debe ser único)
+  contraseña: String,                   // Contraseña (se guarda encriptada)
+  seguridad: String,                    // Respuesta a pregunta de seguridad
+  fecha: String,                        // Fecha relevante (ej. nacimiento)
+  saldo: { type: Number, default: 10000 },// Saldo inicial de 10000
+  historialTransacciones: { type: Array, default: [] } // Historial de recargas/retiros
 });
-const Usuario = mongoose.model('Usuario', UsuarioSchema); // Crear el modelo 'Usuario' a partir del esquema
+// Crea el modelo 'Usuario' basado en el esquema
+const Usuario = mongoose.model('Usuario', UsuarioSchema);
 
-// Esquema para el estado global del juego (historiales de la ruleta)
+// Esquema para el estado global del juego (historiales de ruleta)
 const GameStateSchema = new mongoose.Schema({
-  _id: { type: String, default: 'main_game_state' }, // ID fijo para asegurar un único documento
-  historialGanadores: { type: Array, default: [] }, // Array para los últimos números ganadores
-  historialApuestas: { type: Array, default: [] } // Array para las últimas apuestas realizadas globalmente
+  _id: { type: String, default: 'main_game_state' }, // ID fijo para tener un solo documento
+  historialGanadores: { type: Array, default: [] }, // Últimos números ganadores
+  historialApuestas: { type: Array, default: [] }  // Últimas apuestas globales
 });
-const GameState = mongoose.model('GameState', GameStateSchema); // Crear el modelo 'GameState'
+// Crea el modelo 'GameState' basado en el esquema
+const GameState = mongoose.model('GameState', GameStateSchema);
+
 
 // ===============================
-//         RUTAS (Endpoints de la aplicación web)
+//         RUTAS (Manejo de peticiones HTTP GET y POST)
 // ===============================
 
-// Ruta Principal (Página de Inicio)
+// Ruta para la página principal
 app.get('/', (req, res) => res.render('home', { title: 'Inicio' }));
 
-// Rutas de Registro de Usuario
+// Ruta para mostrar el formulario de registro
 app.get('/register', (req, res) => res.render('register', { title: 'Registro' }));
 
+// Ruta para procesar el formulario de registro
 app.post('/register', async (req, res) => {
   const { nombre, usuario, correo, contraseña, confirmar, seguridad, fecha } = req.body;
-  // Validación de campos obligatorios y coincidencia de contraseñas
+  // Validación de campos
   if (!nombre || !usuario || !correo || !contraseña || !confirmar || !seguridad || !fecha || contraseña !== confirmar) {
     return res.render('register', { error: 'Datos incompletos o las contraseñas no coinciden.', ...req.body });
   }
   try {
-    // Verificar si el correo o usuario ya existen en la base de datos
+    // Verificar si usuario o correo ya existen
     const correoExistente = await Usuario.findOne({ correo: correo });
     if (correoExistente) return res.render('register', { error: 'Ya existe una cuenta registrada con este correo.', ...req.body });
     const usuarioExistente = await Usuario.findOne({ usuario: usuario });
     if (usuarioExistente) return res.render('register', { error: 'El nombre de usuario ya está en uso.', ...req.body });
 
-    // Encriptar la contraseña antes de guardarla
+    // Encriptar contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(contraseña, salt);
 
-    // Crear una nueva instancia del modelo Usuario
-    const nuevoUsuario = new Usuario({
-        nombre,
-        usuario,
-        correo,
-        contraseña: hashedPassword, // Guardar la contraseña encriptada
-        seguridad,
-        fecha
-    });
-
-    // Guardar el nuevo usuario en la base de datos
+    // Crear y guardar nuevo usuario
+    const nuevoUsuario = new Usuario({ nombre, usuario, correo, contraseña: hashedPassword, seguridad, fecha });
     await nuevoUsuario.save();
     console.log('Usuario registrado en MongoDB con contraseña encriptada:', usuario);
 
-    // Crear cookies para iniciar sesión automáticamente
+    // Crear cookies de sesión
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', nuevoUsuario.usuario, opciones);
     res.cookie('nombre', nuevoUsuario.nombre, opciones);
     res.cookie('saldo', nuevoUsuario.saldo, opciones);
 
-    // Redirigir al perfil con un mensaje de éxito
+    // Redirigir al perfil
     return res.redirect('/perfil?status=registrado');
   } catch (err) {
     console.error("Error al registrar:", err);
@@ -139,36 +133,37 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Rutas de Inicio de Sesión (Login)
+// Ruta para mostrar el formulario de login
 app.get('/login', (req, res) => {
   let mensaje = null;
-  // Mostrar mensaje si viene de cerrar sesión
   if (req.query.status === 'logout') mensaje = 'Has cerrado sesión exitosamente.';
+  if (req.query.status === 'reset_ok') mensaje = 'Contraseña actualizada correctamente. Puedes iniciar sesión.';
   res.render('login', { title: 'Iniciar sesión', mensaje });
 });
 
+// Ruta para procesar el formulario de login
 app.post('/login', async (req, res) => {
   const correo = (req.body.email || '').trim();
   const pass = (req.body.pass || '').trim();
   try {
-    // Buscar usuario por correo electrónico
+    // Buscar usuario por correo
     const usuarioEncontrado = await Usuario.findOne({ correo: correo });
     if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
-
-    // Comparar la contraseña ingresada con la encriptada almacenada
+    
+    // Comparar contraseña ingresada con la encriptada
     const esCorrecta = await bcrypt.compare(pass, usuarioEncontrado.contraseña);
     if (!esCorrecta) {
       return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
     }
 
-    // Si la contraseña es correcta, crear cookies de sesión
+    // Si es correcta, crear cookies de sesión
     console.log('Inicio de sesión exitoso:', usuarioEncontrado.usuario);
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', usuarioEncontrado.usuario, opciones);
     res.cookie('nombre', usuarioEncontrado.nombre, opciones);
     res.cookie('saldo', usuarioEncontrado.saldo, opciones);
 
-    // Redirigir al perfil del usuario
+    // Redirigir al perfil
     return res.redirect('/perfil');
   } catch (err) {
     console.error("Error en el login:", err);
@@ -176,41 +171,34 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Ruta de Cierre de Sesión (Logout)
+// Ruta para cerrar sesión
 app.get('/logout', (req, res) => {
-  // Limpiar las cookies de sesión
   res.clearCookie('usuario');
   res.clearCookie('nombre');
   res.clearCookie('saldo');
-  // Redirigir al login con mensaje de éxito
   res.redirect('/login?status=logout');
 });
 
-// Ruta de Perfil de Usuario
+// Ruta para mostrar el perfil del usuario
 app.get('/perfil', async (req, res) => {
-  // Verificar si el usuario está logueado (si existe la cookie)
-  if (!req.cookies.usuario) return res.redirect('/login');
+  if (!req.cookies.usuario) return res.redirect('/login'); // Requiere estar logueado
   try {
-      // Obtener los datos más recientes del usuario desde la base de datos
       const usuarioData = await Usuario.findOne({ usuario: req.cookies.usuario }).lean();
-      if (!usuarioData) return res.redirect('/login'); // Si no se encuentra, redirigir
+      if (!usuarioData) return res.redirect('/login');
 
       let mensaje = null;
-      // Mostrar mensaje si viene de un registro exitoso
       if (req.query.status === 'registrado') mensaje = '¡Te has registrado y tu sesión se ha iniciado exitosamente!';
 
       const saldo = usuarioData.saldo || 0;
       const username = usuarioData.nombre || 'Usuario';
       const usertag = usuarioData.usuario || 'usuario';
 
-      // Generar un ID temporal basado en el usertag (para visualización)
+      // Generar ID temporal (solo visual)
       let hash = 0;
-      for (let i = 0; i < usertag.length; i++) {
-        hash = (hash * 31 + usertag.charCodeAt(i)) % 1000000;
-      }
+      for (let i = 0; i < usertag.length; i++) hash = (hash * 31 + usertag.charCodeAt(i)) % 1000000;
       const id = String(hash).padStart(6, '0');
 
-      // Renderizar la vista del perfil con los datos del usuario
+      // Renderizar vista del perfil
       res.render('perfil', {
           title: 'Perfil',
           username: username,
@@ -218,57 +206,50 @@ app.get('/perfil', async (req, res) => {
           id: id,
           saldo: Number(saldo).toLocaleString('es-CL'),
           mensaje: mensaje,
-          historialTransacciones: usuarioData.historialTransacciones // Pasar el historial de transacciones
+          historialTransacciones: usuarioData.historialTransacciones
       });
   } catch (error) {
       console.error("Error al cargar el perfil:", error);
-      res.redirect('/login'); // Redirigir si hay un error
+      res.redirect('/login');
   }
 });
 
-// Ruta del Lobby (Mesa de Juego)
+// Ruta para mostrar el lobby del juego
 app.get('/lobby', async (req, res) => {
-    // Verificar si está logueado
-    if (!req.cookies.usuario) return res.redirect('/login');
+    if (!req.cookies.usuario) return res.redirect('/login'); // Requiere login
     try {
-        // Obtener datos del usuario y estado global del juego (historiales de ruleta)
+        // Obtener datos del usuario y estado global del juego
         const [usuarioData, gameState] = await Promise.all([
             Usuario.findOne({ usuario: req.cookies.usuario }).lean(),
-            GameState.findById('main_game_state').lean() // Usar .lean() para obtener un objeto JS simple
+            GameState.findById('main_game_state').lean()
         ]);
-        if (!usuarioData) return res.redirect('/login'); // Si no existe el usuario
-
-        // Si no hay estado de juego guardado, usar uno vacío por defecto
+        if (!usuarioData) return res.redirect('/login');
         const currentGameState = gameState || { historialGanadores: [], historialApuestas: [] };
 
-        // Renderizar la vista del lobby, pasando los datos necesarios
+        // Renderizar vista del lobby
         res.render('lobby', {
             title: 'Lobby',
-            saldo: Number(usuarioData.saldo).toLocaleString('es-CL'), // Saldo formateado
-            // Pasar historiales como JSON para que el script del cliente los lea
+            saldo: Number(usuarioData.saldo).toLocaleString('es-CL'),
             historialGanadores: JSON.stringify(currentGameState.historialGanadores),
             historialApuestas: JSON.stringify(currentGameState.historialApuestas),
-            usertag: usuarioData.usuario // Nombre de usuario para identificar jugadas
+            usertag: usuarioData.usuario
         });
     } catch (error) {
         console.error("Error al cargar el lobby:", error);
-        res.redirect('/perfil'); // Redirigir si hay error
+        res.redirect('/perfil');
     }
 });
 
-// Rutas de Transacciones (Recarga y Retiro)
+// Ruta para mostrar la página de transacciones
 app.get('/transacciones', async (req, res) => {
     if (!req.cookies.usuario) return res.redirect('/login'); // Requiere login
     try {
-        // Obtener datos frescos del usuario
         const usuarioData = await Usuario.findOne({ usuario: req.cookies.usuario }).lean();
         if (!usuarioData) return res.redirect('/login');
-        // Actualizar la cookie de saldo por si hubo cambios externos
         res.cookie('saldo', usuarioData.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
 
         let mensajeRecarga = null, errorRecarga = null, mensajeRetiro = null, errorRetiro = null;
-
-        // Determinar qué mensaje mostrar según el parámetro 'status' en la URL
+        // Asignar mensajes según el query 'status'
         const status = req.query.status;
         if (status === 'recarga_ok') mensajeRecarga = '¡Recarga exitosa!';
         else if (status === 'recarga_error_monto') errorRecarga = 'El monto debe ser un número positivo.';
@@ -283,7 +264,7 @@ app.get('/transacciones', async (req, res) => {
         else if (status === 'saldo_insuficiente') errorRetiro = 'No tienes saldo suficiente para este retiro.';
         else if (status === 'retiro_error_general') errorRetiro = 'Error al procesar el retiro.';
 
-        // Renderizar la vista de transacciones con el saldo y mensajes
+        // Renderizar vista de transacciones
         res.render('transacciones', {
             title: 'Transacciones',
             saldo: Number(usuarioData.saldo).toLocaleString('es-CL'),
@@ -295,16 +276,17 @@ app.get('/transacciones', async (req, res) => {
     }
 });
 
+// Ruta para procesar recarga de saldo
 app.post('/transacciones/recargar', async (req, res) => {
     if (!req.cookies.usuario) return res.redirect('/login');
     try {
         const montoRecarga = Number(req.body.monto);
-        const numeroTarjeta = req.body.numeroTarjeta.replace(/\s/g, ''); // Limpiar espacios
+        const numeroTarjeta = req.body.numeroTarjeta.replace(/\s/g, '');
         const cvv = req.body.cvv;
         const fechaVencimiento = req.body.fv;
         const nombreTitular = req.body.nombreTitular;
 
-        // Validaciones del lado del servidor
+        // Validaciones del servidor
         if (isNaN(montoRecarga) || montoRecarga <= 0) return res.redirect('/transacciones?status=recarga_error_monto');
         if (!/^\d{16}$/.test(numeroTarjeta)) return res.redirect('/transacciones?status=recarga_error_tarjeta');
         if (!/^\d{3}$/.test(cvv)) return res.redirect('/transacciones?status=recarga_error_cvv');
@@ -314,29 +296,24 @@ app.post('/transacciones/recargar', async (req, res) => {
         const usuario = req.cookies.usuario;
         const nuevaTransaccion = { tipo: 'Recarga', fecha: new Date(), monto: montoRecarga };
 
-        // Actualizar el saldo y el historial de transacciones en la BD
+        // Incrementar saldo y añadir al historial en la BD
         const resultado = await Usuario.findOneAndUpdate(
             { usuario: usuario },
-            {
-                $inc: { saldo: montoRecarga }, // Incrementar saldo
-                $push: { historialTransacciones: { $each: [nuevaTransaccion], $slice: -5 } } // Añadir al historial (últimos 5)
-            },
-            { new: true } // Devolver el documento actualizado
+            { $inc: { saldo: montoRecarga }, $push: { historialTransacciones: { $each: [nuevaTransaccion], $slice: -5 } } },
+            { new: true }
         );
 
-        if (!resultado) return res.redirect('/login'); // Si no se encuentra el usuario
-        // Actualizar la cookie de saldo
+        if (!resultado) return res.redirect('/login');
         res.cookie('saldo', resultado.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
         console.log(`Recarga exitosa para ${usuario}: +${montoRecarga}`);
-        // Redirigir con mensaje de éxito
         return res.redirect('/transacciones?status=recarga_ok');
-
     } catch (error) {
         console.error("Error en la recarga:", error);
         return res.redirect('/transacciones?status=recarga_error_general');
     }
 });
 
+// Ruta para procesar retiro de saldo
 app.post('/transacciones/retirar', async (req, res) => {
     if (!req.cookies.usuario) return res.redirect('/login');
     try {
@@ -348,88 +325,129 @@ app.post('/transacciones/retirar', async (req, res) => {
         if (!/^\d+$/.test(numeroCuenta)) return res.redirect('/transacciones?status=retiro_error_cuenta');
 
         const usuario = req.cookies.usuario;
-        // Buscar al usuario para verificar su saldo actual
         const usuarioData = await Usuario.findOne({ usuario: usuario });
         if (!usuarioData) return res.redirect('/login');
-        // Verificar si tiene saldo suficiente
         if (usuarioData.saldo < montoRetiro) return res.redirect('/transacciones?status=saldo_insuficiente');
 
-        const nuevaTransaccion = { tipo: 'Retiro', fecha: new Date(), monto: -montoRetiro }; // Monto negativo para retiros
+        const nuevaTransaccion = { tipo: 'Retiro', fecha: new Date(), monto: -montoRetiro };
 
-        // Actualizar saldo y historial en la BD
+        // Decrementar saldo y añadir al historial en la BD
         const resultado = await Usuario.findOneAndUpdate(
             { usuario: usuario },
-            {
-                $inc: { saldo: -montoRetiro }, // Decrementar saldo
-                $push: { historialTransacciones: { $each: [nuevaTransaccion], $slice: -5 } }
-            },
+            { $inc: { saldo: -montoRetiro }, $push: { historialTransacciones: { $each: [nuevaTransaccion], $slice: -5 } } },
             { new: true }
         );
 
-        if (!resultado) return res.redirect('/login'); // Si hay error actualizando
-        // Actualizar cookie de saldo
+        if (!resultado) return res.redirect('/login');
         res.cookie('saldo', resultado.saldo, { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
         console.log(`Retiro exitoso para ${usuario}: -${montoRetiro}`);
-        // Redirigir con mensaje de éxito
         return res.redirect('/transacciones?status=retiro_ok');
-
     } catch (error) {
         console.error("Error en el retiro:", error);
         return res.redirect('/transacciones?status=retiro_error_general');
     }
 });
 
-// Ruta para Eliminar Cuenta de Usuario
+// Ruta para eliminar la cuenta del usuario
 app.post('/perfil/eliminar', async (req, res) => {
   try {
     const usuarioAEliminar = req.cookies.usuario;
-    if (!usuarioAEliminar) return res.redirect('/login'); // Requiere estar logueado
-    
-    // Eliminar el usuario de la base de datos
+    if (!usuarioAEliminar) return res.redirect('/login');
     await Usuario.deleteOne({ usuario: usuarioAEliminar });
     console.log(`Usuario eliminado: ${usuarioAEliminar}`);
-
-    // Limpiar cookies de sesión
     res.clearCookie('usuario');
     res.clearCookie('nombre');
     res.clearCookie('saldo');
-    // Redirigir a la página principal
     return res.redirect('/');
   } catch (err) {
     console.error("Error al eliminar el usuario:", err);
-    return res.redirect('/perfil'); // Si hay error, volver al perfil
+    return res.redirect('/perfil');
   }
 });
 
-// Otras Rutas Estáticas (About, Bases Legales, Recuperar Contraseña)
+// Ruta para mostrar el formulario de olvido de contraseña
+app.get('/forgot', (req, res) => {
+    let error = null;
+    if(req.query.status === 'reset_failed') error = 'No se pudo verificar el enlace para resetear la contraseña.';
+    res.render('forgot', { title: 'Recuperar contraseña', error });
+});
+
+// Ruta para procesar la verificación de seguridad del olvido de contraseña
+app.post('/forgot', async (req, res) => {
+    const { correo, seguridad, fecha } = req.body;
+    try {
+        const usuario = await Usuario.findOne({ correo: correo.trim() });
+        // Comprobar si existe y coinciden los datos de seguridad
+        // Nota: La comparación de fechas como strings puede ser delicada si el formato no es exacto (YYYY-MM-DD)
+        if (!usuario || usuario.seguridad !== seguridad.trim() || usuario.fecha !== fecha) {
+             return res.render('forgot', { error: 'Los datos ingresados no coinciden o el correo no está registrado.', correo, seguridad, fecha });
+        }
+        // Redirigir a la página de reseteo (pasando correo como query param - método simple)
+        res.redirect(`/reset-password?correo=${encodeURIComponent(correo)}`);
+    } catch (error) {
+        console.error("Error en /forgot:", error);
+        res.render('forgot', { error: 'Error del servidor al verificar los datos.', correo, seguridad, fecha });
+    }
+});
+
+// Ruta para mostrar el formulario de nueva contraseña
+app.get('/reset-password', (req, res) => {
+    const correo = req.query.correo;
+    if (!correo) return res.redirect('/forgot?status=reset_failed'); // Si no hay correo, volver
+    res.render('reset-password', { title: 'Establecer Nueva Contraseña', correo: correo });
+});
+
+// Ruta para procesar y guardar la nueva contraseña
+app.post('/reset-password', async (req, res) => {
+    const { correo, nuevaContraseña, confirmarContraseña } = req.body;
+    if (!nuevaContraseña || nuevaContraseña !== confirmarContraseña) {
+        return res.render('reset-password', { error: 'Las contraseñas no coinciden o están vacías.', correo: correo });
+    }
+    try {
+        // Encriptar la nueva contraseña
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(nuevaContraseña, salt);
+        // Actualizar la contraseña en la base de datos
+        const resultado = await Usuario.updateOne({ correo: correo }, { $set: { contraseña: hashedPassword } });
+        if (resultado.modifiedCount === 0) {
+            return res.render('reset-password', { error: 'No se pudo encontrar el usuario para actualizar.', correo });
+        }
+        console.log(`Contraseña actualizada para: ${correo}`);
+        // Redirigir al login con mensaje de éxito
+        res.redirect('/login?status=reset_ok');
+    } catch (error) {
+        console.error("Error en /reset-password POST:", error);
+        res.render('reset-password', { error: 'Error del servidor al actualizar la contraseña.', correo });
+    }
+});
+
+// Rutas estáticas adicionales
 app.get('/about', (req, res) => res.render('about', { title: 'Acerca de' }));
 app.get('/baseslegales', (req, res) => res.render('baseslegales', { title: 'Bases legales' }));
-app.get('/forgot', (req, res) => res.render('forgot', { title: 'Recuperar contraseña' }));
-// (Aquí faltaría la lógica POST para /forgot si se implementara)
 
 // ===============================
-//         LÓGICA DE SOCKET.IO (Comunicación en Tiempo Real)
+//         LÓGICA DE SOCKET.IO (Comunicación en Tiempo Real para el Lobby)
 // ===============================
 io.on('connection', (socket) => {
   console.log('Un usuario se ha conectado al lobby');
 
-  // Evento que se recibe desde el cliente (ruleta.js) cuando termina una jugada
+  // Escucha el evento 'nueva-jugada' enviado por el cliente (ruleta.js)
   socket.on('nueva-jugada', async (data) => {
     try {
-      // Actualiza el saldo del usuario que jugó en la base de datos
+      // Actualiza el saldo del usuario que jugó
       await Usuario.updateOne({ usuario: data.usertag }, { $set: { saldo: data.saldo } });
       
-      // Actualiza el estado global del juego (historiales de ruleta) en la base de datos
+      // Actualiza el estado global del juego (historiales de ruleta)
       const updatedGameState = await GameState.findByIdAndUpdate(
-        'main_game_state', // ID fijo del documento
+        'main_game_state',
         { $set: { 
             historialGanadores: data.historialGanadores,
             historialApuestas: data.historialApuestas
           }},
-        { new: true, upsert: true, lean: true } // 'upsert' crea el documento si no existe la primera vez
+        { new: true, upsert: true, lean: true } // 'upsert' crea si no existe
       );
       
-      // Emite (envía) el historial actualizado a TODOS los clientes conectados al lobby
+      // Emite el historial actualizado a TODOS los clientes conectados
       io.emit('actualizar-historial', {
         historialGanadores: updatedGameState.historialGanadores,
         historialApuestas: updatedGameState.historialApuestas
@@ -441,7 +459,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Evento cuando un usuario cierra la pestaña o se desconecta
+  // Evento cuando un usuario se desconecta
   socket.on('disconnect', () => {
     console.log('Un usuario se ha desconectado');
   });
@@ -450,8 +468,7 @@ io.on('connection', (socket) => {
 // ===============================
 // Iniciar Servidor y Conexión a MongoDB
 // ===============================
-server.listen(port, () => console.log(`Servidor corriendo en http://localhost:${port}`)); // Iniciar el servidor HTTP
-// Conexión a la base de datos MongoDB Atlas
+server.listen(port, () => console.log(`Servidor corriendo en http://localhost:${port}`));
 mongoose.connect('mongodb+srv://admin:admin123@miapp.qnclhil.mongodb.net/?retryWrites=true&w=majority&appName=miapp', {})
 .then(() => console.log('Conexión exitosa a MongoDB Atlas'))
 .catch(err => console.error('Error conectando a MongoDB', err));
