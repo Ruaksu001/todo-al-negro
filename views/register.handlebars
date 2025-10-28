@@ -14,7 +14,7 @@
       name="nombre"
       class="inputs"
       placeholder="Nombre completo"
-      value="{{nombrecompleto}}"
+      value="{{nombre}}"
       required
     />
     <input
@@ -33,20 +33,37 @@
       value="{{usuario}}"
       required
     />
-    <input
-      type="password"
-      name="contraseña"
-      class="inputs"
-      placeholder="Contraseña"
-      required
-    />
-    <input
-      type="password"
-      name="confirmar"
-      class="inputs"
-      placeholder="Confirmar contraseña"
-      required
-    />
+
+    <div class="password-container">
+      <input
+        type="password"
+        name="contraseña"
+        id="registerPassword"
+        class="inputs"
+        placeholder="Contraseña"
+        required
+      />
+      <div class="show-password-label">
+          <input type="checkbox" id="showRegisterPassword" onclick="togglePasswordVisibility('registerPassword', 'showRegisterPassword', 'iconRegisterPassword')">
+          <img src="/img/ojo_cerrado.png" id="iconRegisterPassword" class="password-toggle-icon" title="Mostrar contraseña" alt="Mostrar/Ocultar contraseña">
+      </div>
+    </div>
+
+    <div class="password-container">
+      <input
+        type="password"
+        name="confirmar"
+        id="confirmPassword"
+        class="inputs"
+        placeholder="Confirmar contraseña"
+        required
+      />
+      <div class="show-password-label">
+          <input type="checkbox" id="showConfirmPassword" onclick="togglePasswordVisibility('confirmPassword', 'showConfirmPassword', 'iconConfirmPassword')">
+          <img src="/img/ojo_cerrado.png" id="iconConfirmPassword" class="password-toggle-icon" title="Mostrar contraseña" alt="Mostrar/Ocultar contraseña">
+      </div>
+    </div>
+
     <input
       type="text"
       name="seguridad"
@@ -59,7 +76,7 @@
       type="date"
       name="fecha"
       class="inputs"
-      value="{{fecha}}"
+      placeholder="Fecha de Nacimiento" value="{{fecha}}"
       required
     />
     <input

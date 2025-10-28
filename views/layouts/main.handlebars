@@ -10,7 +10,27 @@
   {{{body}}}
 
   <script src="/socket.io/socket.io.js"></script>
-  
+
+  <script>
+    function togglePasswordVisibility(passwordInputId, checkboxId, iconId) {
+      const passwordInput = document.getElementById(passwordInputId);
+      const checkbox = document.getElementById(checkboxId);
+      const icon = document.getElementById(iconId); // Ahora obtiene la etiqueta <img>
+
+      if (passwordInput && checkbox && icon) {
+        if (checkbox.checked) {
+          passwordInput.type = 'text';    // Muestra la contraseña
+          icon.src = '/img/ojo_abierto.png'; // Cambia a la imagen de ojo abierto
+          icon.title = 'Ocultar contraseña'; // Actualiza el tooltip
+        } else {
+          passwordInput.type = 'password'; // Oculta la contraseña
+          icon.src = '/img/ojo_cerrado.png'; // Cambia a la imagen de ojo cerrado
+          icon.title = 'Mostrar contraseña'; // Actualiza el tooltip
+        }
+      }
+    }
+  </script>
+
   {{{_sections.scripts}}}
 </body>
 </html>

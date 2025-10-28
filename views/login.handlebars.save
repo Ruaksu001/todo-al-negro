@@ -1,9 +1,0 @@
-<h2>Login</h2>
-<form method="POST" action="/login">
-  Nombre: <input name="username"><br>
-  Contraseña: <input type="password" name="password"><br>
-  <button type="submit">Iniciar sesión</button>
-</form>
-<p><a href="/register">¿No tienes cuenta? Regístrate</a></p>
-
-

@@ -407,7 +407,6 @@ body.pagina-larga {
 
 .lobby-right-column {
   flex: 2;
-  /* El flex-direction column y gap ya no son necesarios aquí */
 }
 
 .mesa-ruleta {
@@ -675,3 +674,76 @@ body.pagina-larga {
       line-height: 18px;
   }
 }
+
+/* ====== ESTILOS PARA MOSTRAR CONTRASEÑA (CON IMAGEN) ====== */
+.password-container {
+  display: flex;
+  align-items: center; /* Asegura que los items dentro del flex estén centrados verticalmente */
+  position: relative;
+  margin-bottom: 10px;
+  /* Elimina cualquier altura fija aquí para que se adapte al input */
+}
+
+.password-container .inputs {
+  flex-grow: 1;
+  margin-bottom: 0;
+  padding-right: 45px; /* Aumenta un poco el padding para que el texto no toque el icono */
+  height: 48px; /* Establece una altura fija para el input si no la tiene ya */
+                       /* Asegúrate de que esta altura coincida con el resto de tus inputs */
+}
+
+.show-password-label {
+  position: absolute;
+  right: 10px; /* Ajusta la distancia desde el borde derecho */
+  top: 50%;
+  transform: translateY(-50%); /* Centra verticalmente el contenedor del icono */
+  display: flex;
+  align-items: center; /* Centra el icono dentro de su propio contenedor */
+  justify-content: center;
+  width: 24px; /* Ancho fijo para el área del icono */
+  height: 24px; /* Alto fijo para el área del icono, ayuda a la simetría */
+  overflow: hidden; /* Asegura que si la imagen es más grande, no se desborde */
+}
+
+.show-password-label input[type="checkbox"] {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+}
+
+.password-toggle-icon { /* Estilo para la etiqueta <img> */
+  width: 100%; /* La imagen ocupará todo el ancho de su contenedor (.show-password-label) */
+  height: auto; /* Mantener la proporción */
+  display: block; /* Elimina espacio extra que puede añadir el navegador a las imágenes */
+  cursor: pointer;
+  z-index: 1;
+  user-select: none;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+/* Make icon less transparent when checkbox is checked (password visible) */
+.show-password-label input[type="checkbox"]:checked ~ .password-toggle-icon {
+  opacity: 1; /* Fully opaque when active */
+}
+
+/* Optional: Slightly darker on hover */
+.password-toggle-icon:hover {
+    opacity: 0.8;
+}
+
+/* Ajuste placeholder fecha */
+input[type="date"]::placeholder {
+    color: #cccccc; /* Cambiado a un gris más claro para que contraste mejor */
+    opacity: 1; /* Asegurar que sea visible */
+}
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    /* Intenta no ocultar por defecto a menos que esté vacío */
+}
+input[type="date"] { color: #ccc; } /* Color grisáceo si no hay fecha seleccionada */
+input[type="date"]:valid { color: #FFFFFF; } /* Color blanco cuando hay fecha */

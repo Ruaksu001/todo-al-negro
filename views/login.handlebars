@@ -6,7 +6,6 @@
       {{mensaje}}
     </div>
   {{/if}}
-
   {{#if error}}
     <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
       {{error}}
@@ -22,13 +21,21 @@
       value="{{correo}}"
       required
     />
-    <input
-      type="password"
-      name="pass"
-      class="inputs"
-      placeholder="Contraseña"
-      required
-    />
+    <div class="password-container">
+      <input
+        type="password"
+        name="pass"
+        id="loginPassword"
+        class="inputs"
+        placeholder="Contraseña"
+        required
+      />
+      <div class="show-password-label">
+          <input type="checkbox" id="showLoginPassword" onclick="togglePasswordVisibility('loginPassword', 'showLoginPassword', 'iconLoginPassword')">
+          <img src="/img/ojo_cerrado.png" id="iconLoginPassword" class="password-toggle-icon" title="Mostrar contraseña" alt="Mostrar/Ocultar contraseña">
+      </div>
+    </div>
+
     <input
       type="submit"
       value="Entrar"
