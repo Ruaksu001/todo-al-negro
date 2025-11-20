@@ -120,7 +120,7 @@ app.post('/register', async (req, res) => {
     console.log('Usuario registrado en MongoDB con contraseña encriptada:', usuario);
 
     // Crear cookies de sesión
-    const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
+    const opciones = { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', nuevoUsuario.usuario, opciones);
     res.cookie('nombre', nuevoUsuario.nombre, opciones);
     res.cookie('saldo', nuevoUsuario.saldo, opciones);
