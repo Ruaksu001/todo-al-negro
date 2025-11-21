@@ -1,17 +1,15 @@
 <div id="marco">
   <h1><span class="cabezatext">Registro</span></h1>
 
-  {{!-- Mensaje de error --}}
-  {{#if error}}
-    <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
-      {{error}}
-    </div>
-  {{/if}}
+  <!-- Mensaje de error dinámico (JavaScript) -->
+  <div id="error-message" style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center; display:none;">
+  </div>
 
-  <form id="registro" method="post" action="/register" autocomplete="off">
+  <form id="registro" autocomplete="off">
     <input
       type="text"
       name="nombre"
+      id="nombre"
       class="inputs"
       placeholder="Nombre completo"
       value="{{nombre}}"
@@ -20,6 +18,7 @@
     <input
       type="email"
       name="correo"
+      id="correo"
       class="inputs"
       placeholder="Correo electrónico"
       value="{{correo}}"
@@ -28,6 +27,7 @@
     <input
       type="text"
       name="usuario"
+      id="usuario"
       class="inputs"
       placeholder="Nombre de usuario"
       value="{{usuario}}"
@@ -67,6 +67,7 @@
     <input
       type="text"
       name="seguridad"
+      id="seguridad"
       class="inputs"
       placeholder="Ciudad de nacimiento (Pregunta de seguridad)"
       value="{{seguridad}}"
@@ -75,6 +76,7 @@
     <input
       type="date"
       name="fecha"
+      id="fecha"
       class="inputs"
       placeholder="Fecha de Nacimiento" value="{{fecha}}"
       required
@@ -83,6 +85,7 @@
       type="submit"
       value="Registrarse"
       class="inputs submit"
+      id="submitBtn"
     />
     <br><br>
     <span class="legal-text">
@@ -94,3 +97,77 @@
     <a href="/" class="upleft">Volver al inicio</a>
   </form>
 </div>
+
+<script>
+  // Registro con API REST usando fetch y async/await
+  document.getElementById('registro').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Evitar envío tradicional del formulario
+    
+    const errorDiv = document.getElementById('error-message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Deshabilitar botón mientras se procesa
+    submitBtn.disabled = true;
+    submitBtn.value = 'Registrando...';
+    errorDiv.style.display = 'none';
+    
+    // Obtener datos del formulario
+    const nombre = document.getElementById('nombre').value;
+    const usuario = document.getElementById('usuario').value;
+    const correo = document.getElementById('correo').value;
+    const contraseña = document.getElementById('registerPassword').value;
+    const confirmar = document.getElementById('confirmPassword').value;
+    const seguridad = document.getElementById('seguridad').value;
+    const fecha = document.getElementById('fecha').value;
+    
+    // Validación frontend
+    if (contraseña !== confirmar) {
+      errorDiv.textContent = 'Las contraseñas no coinciden';
+      errorDiv.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.value = 'Registrarse';
+      return;
+    }
+    
+    try {
+      // Llamada a la API REST con fetch
+      const respuesta = await fetch('/api/usuarios/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          nombre, 
+          usuario, 
+          correo, 
+          contraseña, 
+          seguridad, 
+          fecha 
+        })
+      });
+      
+      const resultado = await respuesta.json();
+      
+      if (respuesta.ok) {
+        // Registro exitoso - mostrar mensaje y redirigir al login
+        alert('¡Registro exitoso! Ahora puedes iniciar sesión con tu cuenta.');
+        
+        // Redirigir al login
+        window.location.href = '/login?status=registro_exitoso';
+      } else {
+        // Mostrar error
+        errorDiv.textContent = resultado.message || resultado.error || 'Error al registrarse';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.value = 'Registrarse';
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      errorDiv.textContent = 'Error de conexión con el servidor';
+      errorDiv.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.value = 'Registrarse';
+    }
+  });
+</script>

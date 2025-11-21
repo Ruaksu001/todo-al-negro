@@ -1,61 +1,179 @@
 <div class="contenedor">
-  {{#if mensaje}}
-    <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold;">
-      {{mensaje}}
+  <div id="loading" style="text-align: center; padding: 40px;">
+    <p> Cargando perfil...</p>
+  </div>
+
+  <div id="error-perfil" style="background-color:#ffcccc; color:#8b0000; padding:20px; border-radius:8px; text-align:center; display:none;">
+  </div>
+
+  <div id="perfil-content" style="display:none;">
+    {{#if mensaje}}
+      <div style="background-color: #27ae60; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold;">
+        {{mensaje}}
+      </div>
+    {{/if}}
+
+    <div class="tituloperfil">
+      <h1>Perfil de Usuario</h1>
     </div>
-  {{/if}}
+    <hr>
 
-  <div class="tituloperfil">
-    <h1>Perfil de Usuario</h1>
-  </div>
-  <hr>
-
-  <div class="usuario">
-    <img src="/img/logo blanco.png" width="110"/>
-    <div class="datos">
-      <h2>{{username}}</h2>
-      <p>{{usertag}}</p>
-      <p>ID: {{id}}</p>
-      <p>Saldo: <span style="color:green">{{saldo}} Fichas</span></p>
+    <div class="usuario">
+      <img src="/img/logo blanco.png" width="110"/>
+      <div class="datos">
+        <h2 id="username">--</h2>
+        <p id="usertag">@--</p>
+        <p>ID: <span id="userid">#----</span></p>
+        <p>Saldo: <span style="color:green" id="saldo">0 Fichas</span></p>
+      </div>
     </div>
-  </div>
 
-  <hr>
+    <hr>
 
-  <div class="parrafo2tran">
-    <h2 class="historialt">Historial de Transacciones</h2>
-    <table>
-      <thead> <tr><th>Tipo</th><th>Fecha</th><th>Monto</th></tr>
-      </thead>
-      <tbody> {{#each historialTransacciones}}
+    <div class="parrafo2tran">
+      <h2 class="historialt">Historial de Transacciones</h2>
+      <table>
+        <thead>
+          <tr><th>Tipo</th><th>Fecha</th><th>Monto</th></tr>
+        </thead>
+        <tbody id="transacciones-tbody">
           <tr>
-            <td>{{this.tipo}}</td>
-            <td>{{formatDate this.fecha}}</td> <td>{{this.monto}}</td>
+            <td colspan="3" style="text-align: center; font-style: italic;">Cargando transacciones...</td>
           </tr>
-        {{else}}
-          <tr>
-            <td colspan="3" style="text-align: center; font-style: italic;">No hay transacciones recientes.</td>
-          </tr>
-        {{/each}}
-      </tbody>
-    </table>
+        </tbody>
+      </table>
+    </div>
+
+    <hr>
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="/lobby" class="botonrule" style="
+        display: inline-block;
+        font-size: 1.3em;
+        padding: 15px 40px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+      " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(231, 76, 60, 0.6)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(231, 76, 60, 0.4)'">
+         JUGAR A LA RULETA 
+      </a>
+    </div>
+
+    <section class="danger-zone">
+      <h2>Zona de Peligro</h2>
+      <p>Una vez que eliminas tu cuenta, no hay vuelta atrás. Por favor, ten la certeza de que esto es lo que quieres hacer.</p>
+      <form action="/perfil/eliminar" method="post" onsubmit="return confirm('¿Estás totalmente seguro de que quieres eliminar tu cuenta? Esta acción es permanente y no se puede deshacer.');">
+        <button type="submit" class="btn-eliminar">
+          Eliminar mi cuenta permanentemente
+        </button>
+      </form>
+    </section>
   </div>
-
-  <hr>
-  <a href="/lobby" class="botonrule">Ir a la ruleta</a>
-
-  <section class="danger-zone">
-    <h2>Zona de Peligro</h2>
-    <p>Una vez que eliminas tu cuenta, no hay vuelta atrás. Por favor, ten la certeza de que esto es lo que quieres hacer.</p>
-    <form action="/perfil/eliminar" method="post" onsubmit="return confirm('¿Estás totalmente seguro de que quieres eliminar tu cuenta? Esta acción es permanente y no se puede deshacer.');">
-      <button type="submit" class="btn-eliminar">
-        Eliminar mi cuenta permanentemente
-      </button>
-    </form>
-  </section>
 </div>
 <hr>
 
 <script>
   document.body.classList.add('pagina-larga');
+
+  // Cargar perfil desde la API REST con JWT
+  async function cargarPerfil() {
+    const token = localStorage.getItem('token');
+    const loadingDiv = document.getElementById('loading');
+    const errorDiv = document.getElementById('error-perfil');
+    const contentDiv = document.getElementById('perfil-content');
+
+    // Verificar si hay token
+    if (!token) {
+      errorDiv.textContent = '⚠️ No has iniciado sesión. Redirigiendo al login...';
+      errorDiv.style.display = 'block';
+      loadingDiv.style.display = 'none';
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      return;
+    }
+
+    try {
+      // Llamar a la API para obtener el perfil
+      const respuesta = await fetch('/api/usuarios/perfil', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const resultado = await respuesta.json();
+
+      if (respuesta.ok) {
+        // Perfil obtenido correctamente
+        const usuario = resultado.usuario;
+        
+        // Actualizar la interfaz con los datos del usuario
+        document.getElementById('username').textContent = usuario.nombre;
+        document.getElementById('usertag').textContent = `@${usuario.usuario}`;
+        document.getElementById('userid').textContent = usuario.userId ? `#${usuario.userId}` : usuario.id;
+        document.getElementById('saldo').textContent = `${usuario.saldo} Fichas`;
+
+        // Cargar transacciones
+        cargarTransacciones(usuario.historialTransacciones);
+
+        // Mostrar contenido
+        loadingDiv.style.display = 'none';
+        contentDiv.style.display = 'block';
+
+        console.log('✅ Perfil cargado:', usuario);
+      } else {
+        // Error o token inválido
+        errorDiv.textContent = `❌ ${resultado.message || 'Error al cargar perfil'}. Redirigiendo al login...`;
+        errorDiv.style.display = 'block';
+        loadingDiv.style.display = 'none';
+        
+        // Limpiar localStorage y redirigir
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+        
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      errorDiv.textContent = '❌ Error de conexión con el servidor';
+      errorDiv.style.display = 'block';
+      loadingDiv.style.display = 'none';
+    }
+  }
+
+  // Función para mostrar transacciones
+  function cargarTransacciones(transacciones) {
+    const tbody = document.getElementById('transacciones-tbody');
+    tbody.innerHTML = '';
+
+    if (!transacciones || transacciones.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">No hay transacciones recientes.</td></tr>';
+      return;
+    }
+
+    // Mostrar últimas transacciones (invertir orden para más recientes primero)
+    transacciones.slice().reverse().forEach(t => {
+      const row = document.createElement('tr');
+      
+      const fecha = new Date(t.fecha);
+      const fechaFormateada = fecha.toLocaleDateString('es-CL');
+      
+      row.innerHTML = `
+        <td>${t.tipo}</td>
+        <td>${fechaFormateada}</td>
+        <td>${t.monto}</td>
+      `;
+      
+      tbody.appendChild(row);
+    });
+  }
+
+  // Cargar el perfil cuando la página esté lista
+  window.addEventListener('load', cargarPerfil);
 </script>

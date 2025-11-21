@@ -12,6 +12,7 @@ const mongoose = require('mongoose'); // Librería para interactuar con MongoDB
 const http = require('http'); // Módulo Node.js para crear el servidor HTTP
 const { Server } = require("socket.io"); // Librería para comunicación en tiempo real (WebSockets)
 const bcrypt = require('bcrypt'); // Librería para encriptar contraseñas
+const cors = require('cors'); // Middleware para permitir peticiones desde diferentes orígenes
 
 // Inicialización de Express y servidor HTTP
 const app = express();
@@ -29,6 +30,8 @@ const port = 80;
 app.use(bodyParser.json());
 // Middleware para parsear cuerpos de petición codificados en URL (formularios HTML)
 app.use(bodyParser.urlencoded({ extended: true }));
+// Middleware CORS para permitir peticiones API desde diferentes orígenes
+app.use(cors());
 // Middleware para servir archivos estáticos (CSS, JS de cliente, imágenes) desde la carpeta 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 // Middleware para parsear cookies enviadas por el navegador
@@ -59,36 +62,34 @@ app.set('view engine', 'handlebars'); // Establece Handlebars como motor de vist
 app.set('views', path.join(__dirname, 'views')); // Define la carpeta donde están los archivos .handlebars
 
 // ===============================
-// Modelos de Mongoose (Define la estructura de los datos en MongoDB)
+// Modelos de Mongoose (Importados desde archivos modulares)
 // ===============================
 
-// Esquema para la colección de Usuarios
-const UsuarioSchema = new mongoose.Schema({
-  nombre: String,                       // Nombre completo
-  usuario: { type: String, unique: true }, // Nombre de usuario (debe ser único)
-  correo: { type: String, unique: true },  // Correo electrónico (debe ser único)
-  contraseña: String,                   // Contraseña (se guarda encriptada)
-  seguridad: String,                    // Respuesta a pregunta de seguridad
-  fecha: String,                        // Fecha relevante (ej. nacimiento)
-  saldo: { type: Number, default: 10000 },// Saldo inicial de 10000
-  historialTransacciones: { type: Array, default: [] } // Historial de recargas/retiros
-});
-// Crea el modelo 'Usuario' basado en el esquema
-const Usuario = mongoose.model('Usuario', UsuarioSchema);
+// Importar modelos desde la carpeta models/
+const Usuario = require('./models/Usuario');
+const GameState = require('./models/GameState');
 
-// Esquema para el estado global del juego (historiales de ruleta)
-const GameStateSchema = new mongoose.Schema({
-  _id: { type: String, default: 'main_game_state' }, // ID fijo para tener un solo documento
-  historialGanadores: { type: Array, default: [] }, // Últimos números ganadores
-  historialApuestas: { type: Array, default: [] }  // Últimas apuestas globales
-});
-// Crea el modelo 'GameState' basado en el esquema
-const GameState = mongoose.model('GameState', GameStateSchema);
+// ===============================
+// Rutas API REST (Separación Backend)
+// ===============================
+
+// Importar rutas de la API
+const rutasUsuarios = require('./routes/api/usuarios');
+
+// Montar rutas de la API bajo el prefijo /api
+app.use('/api/usuarios', rutasUsuarios);
 
 
 // ===============================
 //         RUTAS (Manejo de peticiones HTTP GET y POST)
 // ===============================
+
+// ========== RUTAS API REST (JSON) ==========
+// Importar rutas modulares de la API
+const usuariosApiRoutes = require('./routes/api/usuarios');
+app.use('/api/usuarios', usuariosApiRoutes);
+
+// ========== RUTAS DE VISTAS (HTML con Handlebars) ==========
 
 // Ruta para la página principal
 app.get('/', (req, res) => res.render('home', { title: 'Inicio' }));
@@ -96,122 +97,108 @@ app.get('/', (req, res) => res.render('home', { title: 'Inicio' }));
 // Ruta para mostrar el formulario de registro
 app.get('/register', (req, res) => res.render('register', { title: 'Registro' }));
 
-// Ruta para procesar el formulario de registro
+// ⚠️ POST /register DESHABILITADO - Ahora se usa API REST /api/usuarios/register
+// El formulario en register.handlebars usa fetch() para llamar a la API
+/*
 app.post('/register', async (req, res) => {
   const { nombre, usuario, correo, contraseña, confirmar, seguridad, fecha } = req.body;
-  // Validación de campos
   if (!nombre || !usuario || !correo || !contraseña || !confirmar || !seguridad || !fecha || contraseña !== confirmar) {
     return res.render('register', { error: 'Datos incompletos o las contraseñas no coinciden.', ...req.body });
   }
   try {
-    // Verificar si usuario o correo ya existen
     const correoExistente = await Usuario.findOne({ correo: correo });
     if (correoExistente) return res.render('register', { error: 'Ya existe una cuenta registrada con este correo.', ...req.body });
     const usuarioExistente = await Usuario.findOne({ usuario: usuario });
     if (usuarioExistente) return res.render('register', { error: 'El nombre de usuario ya está en uso.', ...req.body });
-
-    // Encriptar contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(contraseña, salt);
-
-    // Crear y guardar nuevo usuario
     const nuevoUsuario = new Usuario({ nombre, usuario, correo, contraseña: hashedPassword, seguridad, fecha });
     await nuevoUsuario.save();
-    console.log('Usuario registrado en MongoDB con contraseña encriptada:', usuario);
-
-    // Crear cookies de sesión
     const opciones = { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', nuevoUsuario.usuario, opciones);
     res.cookie('nombre', nuevoUsuario.nombre, opciones);
     res.cookie('saldo', nuevoUsuario.saldo, opciones);
-
-    // Redirigir al perfil
     return res.redirect('/perfil?status=registrado');
   } catch (err) {
     console.error("Error al registrar:", err);
     return res.render('register', { error: 'Ocurrió un error en el servidor.', ...req.body });
   }
 });
+*/
 
 // Ruta para mostrar el formulario de login
 app.get('/login', (req, res) => {
   let mensaje = null;
   if (req.query.status === 'logout') mensaje = 'Has cerrado sesión exitosamente.';
   if (req.query.status === 'reset_ok') mensaje = 'Contraseña actualizada correctamente. Puedes iniciar sesión.';
+  if (req.query.status === 'registro_exitoso') mensaje = '¡Registro exitoso! Inicia sesión con tu nueva cuenta.';
   res.render('login', { title: 'Iniciar sesión', mensaje });
 });
 
-// Ruta para procesar el formulario de login
+// ⚠️ POST /login DESHABILITADO - Ahora se usa API REST /api/usuarios/login
+// El formulario en login.handlebars usa fetch() para llamar a la API
+/*
 app.post('/login', async (req, res) => {
   const correo = (req.body.email || '').trim();
   const pass = (req.body.pass || '').trim();
   try {
-    // Buscar usuario por correo
     const usuarioEncontrado = await Usuario.findOne({ correo: correo });
     if (!usuarioEncontrado) return res.render('login', { title: 'Iniciar sesión', error: 'No existe ninguna cuenta registrada con este correo electrónico.', correo });
-    
-    // Comparar contraseña ingresada con la encriptada
     const esCorrecta = await bcrypt.compare(pass, usuarioEncontrado.contraseña);
     if (!esCorrecta) {
       return res.render('login', { title: 'Iniciar sesión', error: 'Contraseña incorrecta.', correo });
     }
-
-    // Si es correcta, crear cookies de sesión
     console.log('Inicio de sesión exitoso:', usuarioEncontrado.usuario);
     const opciones = { httpOnly: false, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 };
     res.cookie('usuario', usuarioEncontrado.usuario, opciones);
     res.cookie('nombre', usuarioEncontrado.nombre, opciones);
     res.cookie('saldo', usuarioEncontrado.saldo, opciones);
-
-    // Redirigir al perfil
     return res.redirect('/perfil');
   } catch (err) {
     console.error("Error en el login:", err);
     return res.render('login', { title: 'Iniciar sesión', error: 'Ocurrió un error en el servidor.', correo });
   }
 });
+*/
 
 // Ruta para cerrar sesión
 app.get('/logout', (req, res) => {
+  // Limpiar cookies
   res.clearCookie('usuario');
   res.clearCookie('nombre');
   res.clearCookie('saldo');
-  res.redirect('/login?status=logout');
+  
+  // Renderizar página que limpia localStorage y redirige
+  res.send(`
+    <html>
+      <head><title>Cerrando sesión...</title></head>
+      <body>
+        <script>
+          // Limpiar localStorage
+          localStorage.removeItem('token');
+          localStorage.removeItem('usuario');
+          
+          // Limpiar cookies del cliente
+          document.cookie = 'usuario=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = 'nombre=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          document.cookie = 'saldo=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          
+          window.location.href = '/login?status=logout';
+        </script>
+      </body>
+    </html>
+  `);
 });
 
-// Ruta para mostrar el perfil del usuario
-app.get('/perfil', async (req, res) => {
-  if (!req.cookies.usuario) return res.redirect('/login'); // Requiere estar logueado
-  try {
-      const usuarioData = await Usuario.findOne({ usuario: req.cookies.usuario }).lean();
-      if (!usuarioData) return res.redirect('/login');
-
-      let mensaje = null;
-      if (req.query.status === 'registrado') mensaje = '¡Te has registrado y tu sesión se ha iniciado exitosamente!';
-
-      const saldo = usuarioData.saldo || 0;
-      const username = usuarioData.nombre || 'Usuario';
-      const usertag = usuarioData.usuario || 'usuario';
-
-      // Generar ID temporal (solo visual)
-      let hash = 0;
-      for (let i = 0; i < usertag.length; i++) hash = (hash * 31 + usertag.charCodeAt(i)) % 1000000;
-      const id = String(hash).padStart(6, '0');
-
-      // Renderizar vista del perfil
-      res.render('perfil', {
-          title: 'Perfil',
-          username: username,
-          usertag: `@${usertag}`,
-          id: id,
-          saldo: Number(saldo).toLocaleString('es-CL'),
-          mensaje: mensaje,
-          historialTransacciones: usuarioData.historialTransacciones
-      });
-  } catch (error) {
-      console.error("Error al cargar el perfil:", error);
-      res.redirect('/login');
-  }
+// Ruta para mostrar el perfil del usuario (solo sirve la vista, datos desde API)
+app.get('/perfil', (req, res) => {
+  const mensaje = req.query.status === 'registrado' ? '¡Te has registrado y tu sesión se ha iniciado exitosamente!' : null;
+  
+  // Solo renderizar la vista vacía, los datos se cargarán desde /api/usuarios/perfil con JWT
+  res.render('perfil', {
+    title: 'Perfil',
+    mensaje: mensaje
+  });
 });
 
 // Ruta para mostrar el lobby del juego

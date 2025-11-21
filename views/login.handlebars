@@ -6,18 +6,18 @@
       {{mensaje}}
     </div>
   {{/if}}
-  {{#if error}}
-    <div style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
-      {{error}}
-    </div>
-  {{/if}}
+  
+  <!-- Mensaje de error dinámico (JavaScript) -->
+  <div id="error-message" style="background-color:#ffcccc; color:#8b0000; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center; display:none;">
+  </div>
 
-  <form id="login" method="post" action="/login">
+  <form id="login">
     <input
       type="text"
       name="email"
+      id="email"
       class="inputs"
-      placeholder="Correo electrónico"
+      placeholder="Correo electrónico o usuario"
       value="{{correo}}"
       required
     />
@@ -40,6 +40,7 @@
       type="submit"
       value="Entrar"
       class="inputs submit"
+      id="submitBtn"
     />
     <br><br>
     <span class="legal-text">¿Primera vez? <a href="/register">Pulsa aquí</a></span>
@@ -47,3 +48,62 @@
     <a href="/" class="upleft">Volver al inicio</a>
   </form>
 </div>
+
+<script>
+  // Login con API REST usando fetch y async/await
+  document.getElementById('login').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Evitar envío tradicional del formulario
+    
+    const errorDiv = document.getElementById('error-message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Deshabilitar botón mientras se procesa
+    submitBtn.disabled = true;
+    submitBtn.value = 'Ingresando...';
+    errorDiv.style.display = 'none';
+    
+    // Obtener datos del formulario
+    const usuario = document.getElementById('email').value;
+    const contraseña = document.getElementById('loginPassword').value;
+    
+    try {
+      // Llamada a la API REST con fetch
+      const respuesta = await fetch('/api/usuarios/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ usuario, contraseña })
+      });
+      
+      const resultado = await respuesta.json();
+      
+      if (respuesta.ok) {
+        // Login exitoso - guardar token en localStorage
+        localStorage.setItem('token', resultado.token);
+        localStorage.setItem('usuario', JSON.stringify(resultado.usuario));
+        
+        // Crear cookies para compatibilidad con rutas que las usan
+        document.cookie = `usuario=${resultado.usuario.usuario}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+        document.cookie = `nombre=${resultado.usuario.nombre || resultado.usuario.usuario}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+        document.cookie = `saldo=${resultado.usuario.saldo || 10000}; path=/; max-age=${7*24*60*60}; SameSite=Lax`;
+        
+        // Redirigir al perfil
+        window.location.href = '/perfil';
+      } else {
+        // Mostrar error
+        errorDiv.textContent = resultado.message || resultado.error || 'Error al iniciar sesión';
+        errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.value = 'Entrar';
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      errorDiv.textContent = 'Error de conexión con el servidor';
+      errorDiv.style.display = 'block';
+      submitBtn.disabled = false;
+      submitBtn.value = 'Entrar';
+    }
+  });
+</script>
